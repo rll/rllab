@@ -3,17 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to RLLab
+Welcome to rllab
 ================
 
-RLLab is a framework for developing and evaluating reinforcement learning algorithms.
+rllab is a framework for developing and evaluating reinforcement learning algorithms.
 
-RLLab is a work in progress, input is welcome. The available documentation is limited for now.
+rllab is a work in progress, input is welcome. The available documentation is limited for now.
 
 User Guide
 ==========
 
-The RLLab user guide explains how to install RLLab, how to run experiments, and how to implement new MDPs and new algorithms.
+The rllab user guide explains how to install rllab, how to run experiments, and how to implement new MDPs and new algorithms.
 
 .. toctree::
    :maxdepth: 2

@@ -60,7 +60,7 @@ Anaconda
 System dependencies for pygame
 ------------------------------
 
-A few MDPs in RLLab are implemented using Box2D, which uses pygame for visualization.
+A few environments in rllab are implemented using Box2D, which uses pygame for visualization.
 It requires a few system dependencies to be installed first.
 
 On Linux, run the following:
