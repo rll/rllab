@@ -1,0 +1,124 @@
+<mujoco model="Humanoid">
+  <compiler coordinate="local" angle="radian" />
+  <size njmax="200" nuser_geom="1" nstack="82825" />
+  <default>
+    <joint limited="true" armature="1" damping="1" />
+    <geom condim="3" conaffinity="0" margin="0.1" friction="1.0 0.5 0.5" rgba="0.8 0.6 0.4 1" />
+  </default>
+  <option timestep="0.01" integrator="RK4" />
+  <asset>
+    <texture type="skybox" builtin="gradient" width="100" height="100" rgb1="1 1 1" rgb2="0 0 0" />
+    <texture name="texgeom" type="cube" builtin="flat" mark="cross" width="127" height="1278" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01" />
+    <texture name="texplane" type="2d" builtin="checker" rgb1="0 0 0" rgb2="0.8 0.8 0.8" width="100" height="100" />
+    <material name='MatPlane' texture="texplane" shininess="1" texrepeat="60 60" specular="1"  reflectance="0.5" />
+    <material name='geom' texture="texgeom" texuniform="true" />
+  </asset>
+  <worldbody>
+    <light directional="true" cutoff="100" exponent="1" diffuse="1 1 1" specular=".1 .1 .1" pos="0 0 1.3" dir="-0 0 -1.3" />
+    <geom name='floor' material="MatPlane" pos='0 0 0' size='40 40 40' type='plane' conaffinity='1' rgba='0.8 0.9 0.8 1' condim='3' />
+    <body name="torso" pos="0 0 1.4">
+      <inertial pos="0 0 0.0403624" mass="8.32208" diaginertia="0.159056 0.147471 0.0330627" />
+      <joint name="root" type="free" limited="false" pos="0 0 0" axis="0 0 1" margin="0.01" armature="0" damping="0" />
+      <geom name="torso1" type="capsule" size="0.07 0.07" pos="0 0 0" quat="0.707107 0.707107 0 0" user="0" />
+      <geom name="head" type="sphere" size="0.09" pos="0 0 0.19" user="0" />
+      <geom name="uwaist" type="capsule" size="0.06 0.06" pos="0 0 -0.12" quat="0.707107 0.707107 0 0" user="0" />
+      <body name="pelvis" pos="0 0 -0.425" quat="0.999998 0 -0.002 0">
+        <inertial pos="-0.0148387 0 0.0387097" quat="0.997805 0 0.0662273 0" mass="7.88854" diaginertia="0.0795697 0.0619562 0.0449816" />
+        <!-- <joint name="abdomen_z" type="hinge" pos="0 0 0.22" axis="0 0 1" stiffness="20" range="-0.785398 0.785398" margin="0.01" damping="3" /> -->
+        <!-- <joint name="abdomen_x" type="hinge" pos="0 0 0.22" axis="1 0 0" stiffness="10" range="-0.349066 0.349066" margin="0.01" damping="3" /> -->
+        <!-- <joint name="abdomen_y" type="hinge" pos="0 0 0.22" axis="0 1 0" stiffness="10" range="-1.0472 0.523599" margin="0.01" damping="3" /> -->
+        <geom name="lwaist" type="capsule" size="0.06 0.06" pos="0 0 0.15" quat="0.707107 0.707107 0 0" user="0" />
+        <geom name="butt" type="capsule" size="0.09 0.07" pos="-0.02 0 0" quat="0.707107 0.707107 0 0" user="0" />
+        <body name="right_thigh" pos="0 -0.1 -0.04">
+          <inertial pos="0 0.005 -0.17" quat="0.999892 0.0147011 0 0" mass="5.37761" diaginertia="0.0792387 0.0792387 0.0113602" />
+          <joint name="right_hip1" type="hinge" pos="0 0 0" axis="1 0 0" stiffness="10" range="-0.15 0.0872665" margin="0.01" />
+          <!-- <joint name="right_hip2" type="hinge" pos="0 0 0" axis="0 0 1" stiffness="10" range="-0.3 0.3" margin="0.01" /> -->
+          <joint name="right_hip3" type="hinge" pos="0 0 0" axis="0 1 0" stiffness="20" range="-1.91986 0.174533" margin="0.01" />
+          <geom name="right_thigh1" type="capsule" size="0.065 0.170074" pos="0 0.005 -0.17" quat="0.999892 0.0147011 0 0" user="0" />
+          <body name="right_shin" pos="0 0.01 -0.403">
+            <inertial pos="0 0 -0.181" mass="3.10016" diaginertia="0.045501 0.045501 0.00372174" />
+            <joint name="right_knee" type="hinge" pos="0 0 0.05" axis="0 -1 0" range="-1.3 -0.0349066" margin="0.01" />
+            <geom name="right_shin1" type="capsule" size="0.049 0.181" pos="0 0 -0.181" user="0" />
+            <body name="right_foot" pos="0 0 -0.45">
+              <geom name="right_foot" type="sphere" size="0.075" pos="0 0 0.1" user="0" />
+            </body>
+            <!-- <body name="right_foot" pos="0 0 -0.45">
+                            <inertial pos="0.035 -0.01 0" quat="0 0.707107 0 0.707107" mass="1.08992" diaginertia="0.00577723 0.00529682 0.000877682" />
+                            <joint name="right_ankle_x" type="hinge" pos="0 0 0.06" axis="0.894427 0 0.447214" stiffness="1" range="-0.3 0.3" margin="0.01" damping="0.3" />
+                            <joint name="right_ankle_y" type="hinge" pos="0 0 0.06" axis="0 1 0" stiffness="4" range="-0.4 0.8" margin="0.01" damping="0.3" />
+                            <geom name="right_foot_cap1" type="capsule" size="0.027 0.105475" pos="0.035 -0.03 0" quat="0.707107 -0.0670402 -0.703922 0" user="0" />
+                            <geom name="right_foot_cap2" type="capsule" size="0.027 0.105475" pos="0.035 0.01 0" quat="0.707107 0.0670402 -0.703922 0" user="0" />
+                        </body> -->
+          </body>
+        </body>
+        <body name="left_thigh" pos="0 0.1 -0.04">
+          <inertial pos="0 -0.005 -0.17" quat="0.999892 -0.0147011 0 0" mass="5.37761" diaginertia="0.0792387 0.0792387 0.0113602" />
+          <joint name="left_hip1" type="hinge" pos="0 0 0" axis="-1 0 0" stiffness="10" range="-0.15 0.0872665" margin="0.01" />
+          <!-- <joint name="left_hip2" type="hinge" pos="0 0 0" axis="0 0 -1" stiffness="10" range="-0.3 0.3" margin="0.01" /> -->
+          <joint name="left_hip3" type="hinge" pos="0 0 0" axis="0 1 0" stiffness="20" range="-1.91986 0.174533" margin="0.01" />
+          <geom name="left_thigh1" type="capsule" size="0.065 0.170074" pos="0 -0.005 -0.17" quat="0.999892 -0.0147011 0 0" user="0" />
+          <body name="left_shin" pos="0 -0.01 -0.403">
+            <inertial pos="0 0 -0.181" mass="3.10016" diaginertia="0.045501 0.045501 0.00372174" />
+            <joint name="left_knee" type="hinge" pos="0 0 0.05" axis="0 -1 0" range="-1.3 -0.0349066" margin="0.01" />
+            <geom name="left_shin1" type="capsule" size="0.049 0.181" pos="0 0 -0.181" user="0" />
+            <body name="left_foot" pos="0 0 -0.45">
+              <geom name="left_foot" type="sphere" size="0.075" pos="0 0 0.1" user="0" />
+            </body>
+            <!-- <body name="left_foot" pos="0 0 -0.45">
+                            <inertial pos="0.035 0.01 0" quat="0 0.707107 0 0.707107" mass="1.08992" diaginertia="0.00577723 0.00529682 0.000877682" />
+                            <joint name="left_ankle_x" type="hinge" pos="0 0 0.06" axis="0.894427 0 0.447214" stiffness="1" range="-0.3 0.3" margin="0.01" damping="0.3" />
+                            <joint name="left_ankle_y" type="hinge" pos="0 0 0.06" axis="0 1 0" stiffness="4" range="-0.4 0.8" margin="0.01" damping="0.3" />
+                            <geom name="left_foot_cap1" type="capsule" size="0.027 0.105475" pos="0.035 0.03 0" quat="0.707107 0.0670402 -0.703922 0" user="0" />
+                            <geom name="left_foot_cap2" type="capsule" size="0.027 0.105475" pos="0.035 -0.01 0" quat="0.707107 -0.0670402 -0.703922 0" user="0" />
+                        </body> -->
+          </body>
+        </body>
+      </body>
+      <body name="right_upper_arm" pos="0 -0.17 0.06">
+        <inertial pos="0.08 -0.08 -0.08" quat="0.888074 -0.325058 -0.325058 0" mass="1.59406" diaginertia="0.0139972 0.0139972 0.00127525" />
+        <joint name="right_shoulder1" type="hinge" pos="0 0 0" axis="0 -0.707107 0.707107" stiffness="1" range="-1.0472 0.785398" margin="0.01" />
+        <joint name="right_shoulder2" type="hinge" pos="0 0 0" axis="0.816497 0.408248 0.408248" stiffness="1" range="-0.785398 0.785398" margin="0.01" />
+        <geom name="right_uarm1" type="capsule" size="0.04 0.2" pos="0.08 -0.08 -0.08" quat="0.888074 -0.325058 -0.325058 0" user="0" />
+        <!-- <body name="right_lower_arm" pos="0.18 -0.18 -0.18">
+                    <inertial pos="0.095 0.095 0.095" quat="0.459701 0.627963 -0.627963 0" mass="0.877969" diaginertia="0.00639835 0.00639835 0.000421864" />
+                    <joint name="right_elbow" type="hinge" pos="0 0 0" axis="0 -0.707107 0.707107" range="-1.5708 0.872665" margin="0.01" />
+                    <geom name="right_larm" type="capsule" size="0.031 0.129904" pos="0.095 0.095 0.095" quat="0.459701 0.627963 -0.627963 0" user="0" />
+                </body> -->
+      </body>
+      <body name="left_upper_arm" pos="0 0.17 0.06">
+        <inertial pos="0.08 0.08 -0.08" quat="0.888074 0.325058 -0.325058 0" mass="1.59406" diaginertia="0.0139972 0.0139972 0.00127525" />
+        <joint name="left_shoulder1" type="hinge" pos="0 0 0" axis="0 0.707107 0.707107" stiffness="1" range="-1.0472 0.785398" margin="0.01" />
+        <joint name="left_shoulder2" type="hinge" pos="0 0 0" axis="0.816497 -0.408248 0.408248" stiffness="1" range="-0.785398 0.785398" margin="0.01" />
+        <geom name="left_uarm1" type="capsule" size="0.04 0.2" pos="0.08 0.08 -0.08" quat="0.888074 0.325058 -0.325058 0" user="0" />
+        <!-- <body name="left_lower_arm" pos="0.18 0.18 -0.18">
+                    <inertial pos="0.095 -0.095 0.095" quat="0.459701 -0.627963 -0.627963 0" mass="0.877969" diaginertia="0.00639835 0.00639835 0.000421864" />
+                    <joint name="left_elbow" type="hinge" pos="0 0 0" axis="0 -0.707107 -0.707107" range="-1.5708 0.872665" margin="0.01" />
+                    <geom name="left_larm" type="capsule" size="0.031 0.129904" pos="0.095 -0.095 0.095" quat="0.459701 -0.627963 -0.627963 0" user="0" />
+                </body> -->
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <!-- <motor joint='abdomen_y'        ctrlrange="-30 30" ctrllimited="true"/> -->
+    <!-- <motor joint='abdomen_z'        ctrlrange="-30 30" ctrllimited="true"/> -->
+    <!-- <motor joint='abdomen_x'        ctrlrange="-30 30" ctrllimited="true"/> -->
+    <motor joint='right_hip1' ctrlrange="-100.0 100.0" ctrllimited="true" />
+    <!-- <motor joint='right_hip2'       ctrlrange="-100.0 100.0" ctrllimited="true"/> -->
+    <motor joint='right_hip3' ctrlrange="-100.0 100.0" ctrllimited="true" />
+    <motor joint='right_knee' ctrlrange="-100.0 100.0" ctrllimited="true" />
+    <!-- <motor joint='right_ankle_x'    ctrlrange="-20 20" ctrllimited="true"/> -->
+    <!-- <motor joint='right_ankle_y'    ctrlrange="-20 20" ctrllimited="true"/> -->
+    <motor joint='left_hip1' ctrlrange="-100.0 100.0" ctrllimited="true" />
+    <!-- <motor joint='left_hip2'        ctrlrange="-100.0 100.0" ctrllimited="true"/> -->
+    <motor joint='left_hip3' ctrlrange="-100.0 100.0" ctrllimited="true" />
+    <motor joint='left_knee' ctrlrange="-100.0 100.0" ctrllimited="true" />
+    <!-- <motor joint='left_ankle_x'     ctrlrange="-20 20" ctrllimited="true"/> -->
+    <!-- <motor joint='left_ankle_y'     ctrlrange="-20 20" ctrllimited="true"/> -->
+    <motor joint='right_shoulder1' ctrlrange="-20 20" ctrllimited="true" />
+    <motor joint='right_shoulder2' ctrlrange="-20 20" ctrllimited="true" />
+    <!-- <motor joint='right_elbow'      ctrlrange="-20 20" ctrllimited="true"/> -->
+    <motor joint='left_shoulder1' ctrlrange="-20 20" ctrllimited="true" />
+    <motor joint='left_shoulder2' ctrlrange="-20 20" ctrllimited="true" />
+    <!-- <motor joint='left_elbow'       ctrlrange="-20 20" ctrllimited="true"/> -->
+  </actuator>
+</mujoco>
