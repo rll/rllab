@@ -96,14 +96,23 @@ extra diagnostic information as well as supporting recurrent policies):
             }
         old_dist_info_vars_list = [old_dist_info_vars[k] for k in dist.dist_info_keys]
 
-        dist_info_vars = self.policy.dist_info_sym(obs_var, action_var)
+        state_info_vars = {
+            k: ext.new_tensor(
+                k,
+                ndim=2 + is_recurrent,
+                dtype=theano.config.floatX
+            ) for k in self.policy.state_info_keys
+        }
+        state_info_vars_list = [state_info_vars[k] for k in self.policy.state_info_keys]
+
+        dist_info_vars = self.policy.dist_info_sym(obs_var, state_info_vars)
         logli = dist.log_likelihood_sym(action_var, dist_info_vars)
 
         # formulate as a minimization problem
         # The gradient of the surrogate objective is the policy gradient
         surr_obj = - TT.mean(logli * advantage_var)
 
-        input_list = [obs_var, action_var, advantage_var]
+        input_list = [obs_var, action_var, advantage_var] + state_info_vars_list
 
         self.optimizer.update_opt(surr_obj, target=self.policy, inputs=input_list)
 
@@ -120,6 +129,9 @@ Here's how we might implement :code:`optimize_policy`:
             samples_data,
             "observations", "actions", "advantages"
         )
+        agent_infos = samples_data["agent_infos"]
+        state_info_list = [agent_infos[k] for k in self.policy.state_info_keys]
+        inputs += tuple(state_info_list)
         self.optimizer.optimize(inputs)
 
 
@@ -132,7 +144,7 @@ by the :code:`BatchPolopt` class like below:
 
 .. code-block:: python
 
-    # At the beginning of training, we need to register the mdp and the policy
+    # At the beginning of training, we need to register the environment and the policy
     # onto the parallel_sampler
     parallel_sampler.populate_task(self.env, self.policy)
 
@@ -142,14 +154,11 @@ by the :code:`BatchPolopt` class like below:
     # each worker
     cur_params = self.policy.get_param_values()
 
-    parallel_sampler.request_samples(
+    paths = parallel_sampler.request_samples(
         policy_params=cur_params,
         max_samples=self.batch_size,
         max_path_length=self.max_path_length,
-        whole_paths=self.whole_paths,
     )
-
-    paths = parallel_sampler.collect_paths()
 
 The returned :code:`paths` is a list of dictionaries with keys :code:`rewards`,
 :code:`observations`, :code:`actions`, :code:`env_infos`, and :code:`agent_infos`.
@@ -157,7 +166,8 @@ The latter two, :code:`env_infos` and :code:`agent_infos` are in turn dictionari
 whose values are numpy arrays of the environment and agent (policy) information
 per time step stacked together. :code:`agent_infos` will contain at least information
 that would be returned by calling :code:`policy.dist_info()`. For a gaussian
-distribution with diagonal variance, this would be the means and (log) standard deviations.
+distribution with diagonal variance, this would be the means and the logarithm
+of the standard deviations.
 
 After collecting the trajectories, the :code:`process_samples` method in the
 :code:`BatchPolopt` class computes the empirical returns and advantages by
@@ -168,7 +178,7 @@ tensor, just as we did for the basic algorithm implementation.
 
 One different semantics from the basic implementation is that, rather than
 collecting a fixed number of trajectories with potentially different number
-of steps per trajectory (if the MDP implements a termination condition), we
+of steps per trajectory (if the environment implements a termination condition), we
 specify a desired total number of samples (i.e. time steps) per iteration. The
 number of actual samples collected will be around this number, although sometimes
 slightly larger, to make sure that all trajectories are run until either the
