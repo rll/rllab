@@ -1,0 +1,16 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  cache_directories:
+    - "~/docker"
+  override:
+    - docker info
+    - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
+    - docker build -t tester -f docker/tester_Dockerfile .
+    - mkdir -p ~/docker; docker save tester > ~/docker/image.tar
+
+test:
+  override:
+    - docker run tester /bin/bash -li -c "CIRCLECI=true nose2"

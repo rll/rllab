@@ -1,0 +1,33 @@
+<!-- Auto-generated. Do not edit! -->
+<box2d>
+  <world timestep="0.05" gravity="0,0">
+    <body name="goal" type="static" position="0,0">
+      <fixture group="-1" shape="circle" radius="1"/>
+    </body>
+    <body name="car" type="dynamic" position="3,4">
+      <fixture density="1.6666666666666667" group="-1" shape="polygon" box="0.3,0.5"/>
+    </body>
+    <body name="left_front_wheel" type="dynamic" position="2.7,4.2">
+      <fixture density="3.3333333333333335" group="-1" shape="polygon" box="0.05,0.15"/>
+    </body>
+    <joint type="revolute" name="left_front_wheel_joint" bodyA="car" bodyB="left_front_wheel" localAnchorA="-0.3,0.2" localAnchorB="0,0" limit="0,0"/>
+    <body name="right_front_wheel" type="dynamic" position="3.3,4.2">
+      <fixture density="3.3333333333333335" group="-1" shape="polygon" box="0.05,0.15"/>
+    </body>
+    <joint type="revolute" name="right_front_wheel_joint" bodyA="car" bodyB="right_front_wheel" localAnchorA="0.3,0.2" localAnchorB="0,0" limit="0,0"/>
+    <body name="left_rear_wheel" type="dynamic" position="2.7,3.7">
+      <fixture density="3.3333333333333335" group="-1" shape="polygon" box="0.05,0.15"/>
+    </body>
+    <joint type="revolute" name="left_rear_wheel_joint" bodyA="car" bodyB="left_rear_wheel" localAnchorA="-0.3,-0.3" localAnchorB="0,0" limit="0,0"/>
+    <body name="right_rear_wheel" type="dynamic" position="3.3,3.7">
+      <fixture density="3.3333333333333335" group="-1" shape="polygon" box="0.05,0.15"/>
+    </body>
+    <joint type="revolute" name="right_rear_wheel_joint" bodyA="car" bodyB="right_rear_wheel" localAnchorA="0.3,-0.3" localAnchorB="0,0" limit="0,0"/>
+    <control type="force" bodies="left_front_wheel,right_front_wheel" anchor="0,0" direction="0,1" ctrllimit="-10,10"/>
+    <state body="car" type="xvel"/>
+    <state body="car" type="yvel"/>
+    <state body="car" type="dist" to="goal"/>
+    <state body="car" type="angle" to="goal" transform="cos"/>
+    <state body="car" type="angle" to="goal" transform="sin"/>
+  </world>
+</box2d>
