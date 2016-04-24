@@ -129,7 +129,7 @@ class BatchPolopt(RLAlgorithm):
 
     def obtain_samples(self, itr):
         cur_params = self.policy.get_param_values()
-        paths =  parallel_sampler.sample_paths(
+        paths = parallel_sampler.sample_paths(
             policy_params=cur_params,
             max_samples=self.batch_size,
             max_path_length=self.max_path_length,
@@ -139,7 +139,7 @@ class BatchPolopt(RLAlgorithm):
         else:
             paths_truncated = parallel_sampler.truncate_paths(paths, self.batch_size)
             return paths_truncated
-        
+
     def process_samples(self, itr, paths):
 
         baselines = []

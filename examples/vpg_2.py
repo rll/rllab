@@ -47,7 +47,7 @@ advantages_var = TT.vector('advantages')
 
 # policy.dist_info_sym returns a dictionary, whose values are symbolic expressions for quantities related to the
 # distribution of the actions. For a Gaussian policy, it contains the mean and (log) standard deviation.
-dist_info_vars = policy.dist_info_sym(observations_var, actions_var)
+dist_info_vars = policy.dist_info_sym(observations_var)
 
 # policy.distribution returns a distribution object under rllab.distributions. It contains many utilities for computing
 # distribution-related quantities, given the computed dist_info_vars. Below we use dist.log_likelihood_sym to compute

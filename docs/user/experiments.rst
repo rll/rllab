@@ -48,7 +48,7 @@ see some log messages like the following:
 .. code-block:: text
 
     using seed 1
-    instantiating rllab.mdp.box2d.cartpole_mdp.CartpoleMDP
+    instantiating rllab.envs.box2d.cartpole_env.CartpoleEnv
     instantiating rllab.policy.mean_std_nn_policy.MeanStdNNPolicy
     using argument hidden_sizes with value [32, 32]
     instantiating rllab.baseline.linear_feature_baseline.LinearFeatureBaseline
