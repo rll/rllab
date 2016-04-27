@@ -253,6 +253,8 @@ class DDPG(RLAlgorithm):
                 logger.save_itr_params(epoch, params)
             logger.dump_tabular(with_prefix=False)
             logger.pop_prefix()
+        self.env.terminate()
+        self.policy.terminate()
 
     def init_opt(self):
 

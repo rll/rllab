@@ -73,13 +73,11 @@ class BatchPolopt(RLAlgorithm):
             plotter.init_plot(self.env, self.policy)
 
     def shutdown_worker(self):
-        pass
+        parallel_sampler.terminate_task()
 
     def train(self):
         self.start_worker()
         self.init_opt()
-        episode_rewards = []
-        episode_lengths = []
         for itr in xrange(self.start_itr, self.n_itr):
             with logger.prefix('itr #%d | ' % itr):
                 paths = self.obtain_samples(itr)

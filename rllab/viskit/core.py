@@ -71,12 +71,6 @@ def flatten_dict(d):
 def load_params(params_json_path):
     with open(params_json_path, 'r') as f:
         data = json.loads(f.read())
-#         if 'args_data' in data:
-#             stub_method = pickle.loads(base64.b64decode(data['args_data']))
-#             method_args = stub_method.kwargs
-#             for k, v in method_args.items():
-#                 data[k] = to_json(v)
-#             data["algo"] = to_json(stub_method.obj)
         del data['args_data']
     return data
 

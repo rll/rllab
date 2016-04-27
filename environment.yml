@@ -30,5 +30,6 @@ dependencies:
         - git+https://github.com/Theano/Theano.git@9d0c52b9254c0d30dacbf1e2a231112ee3e3b99a#egg=Theano
         - git+https://github.com/Lasagne/Lasagne.git@19b9d958507e7300e355d7cd1a6bbff2c7726c07#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
-#        - git+https://git@github.com/rl-gym/rl-gym.git@ab205aa3c1fd5f72ad8959d271c565f2f0481e03#egg=rl-gym
         - awscli
+        - git+https://github.com/openai/gym.git
+        - pyglet

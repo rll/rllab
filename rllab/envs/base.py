@@ -64,6 +64,12 @@ class Env(object):
             action_space=self.action_space,
         )
 
+    def terminate(self):
+        """
+        Clean up operation,
+        """
+        pass
+
 
 _Step = collections.namedtuple("Step", ["observation", "reward", "done", "info"])
 
