@@ -50,7 +50,7 @@ class OUStrategy(ExplorationStrategy, Serializable):
     def get_action(self, t, observation, policy, **kwargs):
         action, _ = policy.get_action(observation)
         ou_state = self.evolve_state()
-        return np.clip(action + np.random.normal(size=len(action)), self.action_space.low, self.action_space.high)
+        return np.clip(action + ou_state, self.action_space.low, self.action_space.high)
 
 
 if __name__ == "__main__":
