@@ -43,6 +43,12 @@ class Policy(Parameterized):
         """
         return list()
 
+    def terminate(self):
+        """
+        Clean up operation
+        """
+        pass
+
 
 class StochasticPolicy(Policy):
     # def kl_sym(self, old_dist_info_vars, new_dist_info_vars):

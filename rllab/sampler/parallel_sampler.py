@@ -23,6 +23,15 @@ def _worker_populate_task(G, env, policy):
     G.policy = pickle.loads(policy)
 
 
+def _worker_terminate_task(G):
+    if getattr(G, "env", None):
+        G.env.terminate()
+        G.env = None
+    if getattr(G, "policy", None):
+        G.policy.terminate()
+        G.policy = None
+
+
 def populate_task(env, policy):
     logger.log("Populating workers...")
     singleton_pool.run_each(
@@ -30,6 +39,13 @@ def populate_task(env, policy):
         [(pickle.dumps(env), pickle.dumps(policy))] * singleton_pool.n_parallel
     )
     logger.log("Populated")
+
+
+def terminate_task():
+    singleton_pool.run_each(
+        _worker_terminate_task,
+        [tuple()] * singleton_pool.n_parallel
+    )
 
 
 def _worker_set_seed(_, seed):

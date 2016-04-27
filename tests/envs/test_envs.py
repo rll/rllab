@@ -34,6 +34,7 @@ except OSError:
 from rllab.envs.noisy_env import NoisyObservationEnv, DelayedActionEnv
 from rllab.envs.normalized_env import NormalizedEnv
 from rllab.envs.proxy_env import ProxyEnv
+from rllab.envs.gym_env import GymEnv
 
 simple_env_classes = [
     GridWorldEnv,
@@ -77,6 +78,9 @@ envs.append(
 envs.append(
     NormalizedEnv(CartpoleEnv())
 )
+envs.append(
+    GymEnv('CartPole-v0')
+)
 
 
 @tools.params(*envs)
@@ -91,8 +95,8 @@ def test_env(env):
     res = env.step(a)
     assert ob_space.contains(res.observation)
     assert np.isscalar(res.reward)
-    print(os.environ)
     if 'CIRCLECI' in os.environ:
         print("Skipping rendering test")
     else:
         env.render()
+    env.terminate()

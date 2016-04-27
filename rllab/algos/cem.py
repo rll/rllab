@@ -144,3 +144,4 @@ class CEM(RLAlgorithm, Serializable):
             logger.pop_prefix()
             if self.plot:
                 plotter.update_plot(self.policy, self.max_path_length)
+        parallel_sampler.terminate_task()
