@@ -29,3 +29,10 @@ class ProxyEnv(Env):
 
     def log_diagnostics(self, paths):
         self._wrapped_env.log_diagnostics(paths)
+
+    @property
+    def horizon(self):
+        return self._wrapped_env.horizon
+
+    def terminate(self):
+        self._wrapped_env.terminate()
