@@ -10,8 +10,8 @@ Integrating with OpenAI Gym
 learning toolkit that contains a wider range of environments, and it also
 features an online scoreboard. We provide a wrapper to run algorithms in rllab
 on environments from OpenAI Gym, as well as submitting the results to the
-scoreboard. The example script in `examples/trpo_gym.py` provides a simple
-example of training an agent on the `Pendulum-v0` environment. The content of
+scoreboard. The example script in :code:`examples/trpo_gym.py` provides a simple
+example of training an agent on the :code:`Pendulum-v0` environment. The content of
 the file is as follows:
 
 .. code-block:: python
@@ -68,7 +68,7 @@ Running the script will automatically record the episodic total reward and
 periodically record video. When the script finishes running, you will see an
 instruction of how to upload it to the online scoreboard, similar to the following
 text (you will need to first register for an account on https://gym.openai.com,
-and set the environment variable `OPENAI_GYM_API_KEY` to be your API key):
+and set the environment variable :code:`OPENAI_GYM_API_KEY` to be your API key):
 
 
 .. code-block:: bash
