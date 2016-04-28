@@ -6,13 +6,11 @@
 Integrating with OpenAI Gym
 ===========================
 
-`OpenAI Gym <https://gym.openai.com/>`_ is a recently released reinforcement
-learning toolkit that contains a wider range of environments, and it also
-features an online scoreboard. We provide a wrapper to run algorithms in rllab
-on environments from OpenAI Gym, as well as submitting the results to the
-scoreboard. The example script in :code:`examples/trpo_gym.py` provides a simple
-example of training an agent on the :code:`Pendulum-v0` environment. The content of
-the file is as follows:
+`OpenAI Gym <https://gym.openai.com/>`_ is a recently released reinforcement learning toolkit that contains a wide
+range of environments and an online scoreboard. rllab now provides a wrapper to run algorithms in rllab on environments
+from OpenAI Gym, as well as submitting the results to the scoreboard. The example script in :code:`examples/trpo_gym.py`
+provides a simple example of training an agent on the :code:`Pendulum-v0` environment. The content of the file is as follows:
+
 
 .. code-block:: python
 
@@ -85,14 +83,12 @@ and set the environment variable :code:`OPENAI_GYM_API_KEY` to be your API key):
 Comparison between rllab and OpenAI Gym
 =======================================
 
-Both rllab and OpenAI Gym set out to be frameworks for developing and evaluating
-reinforcement learning algorithms. OpenAI Gym has a wider range of supported
-environments, as well as an online scoreboard for sharing the training results.
+Both rllab and OpenAI Gym set out to be frameworks for developing and evaluating reinforcement learning algorithms.
+
+OpenAI Gym has a wider range of supported environments, as well as an online scoreboard for sharing the training results.
 It makes no assumptions of how the agent should be implemented.
 
-On the other hand, rllab is a more opinionated framework with a set of built-in
-algorithm implementations which are agnostic of how the environment or the policy
-is laid out, as well as fine grained components for developing and experimenting
-with new reinforcement learning algorithms. rllab is fully compatible with OpenAI
-Gym. Our reference implementations enable faster experimentation of research ideas
-and support seamless upload to Gym's scoreboard.
+rllab offers a set of built-in implementations of RL algorithms. These implementations are agnostic how the environment
+or the policy is laid out, as well as fine grained components for developing and experimenting with new reinforcement
+learning algorithms. rllab is fully compatible with OpenAI Gym. The rllab reference implementations of a wide range of
+RL algorithms enable faster experimentation and rllab provides seamless upload to Gym’s scoreboard.
