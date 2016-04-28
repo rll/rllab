@@ -20,6 +20,7 @@ The rllab user guide explains how to install rllab, how to run experiments, and 
 
    user/installation
    user/experiments
+   user/gym_integration
    user/implement_env
    user/implement_algo_basic
    user/implement_algo_advanced

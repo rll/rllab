@@ -862,7 +862,10 @@ def concretize(maybe_stub):
     elif isinstance(maybe_stub, StubClass):
         return maybe_stub.proxy_class
     elif isinstance(maybe_stub, StubAttr):
-        return getattr(concretize(maybe_stub.obj), maybe_stub.attr_name)
+        obj = concretize(maybe_stub.obj)
+        attr_name = maybe_stub.attr_name
+        attr_val = getattr(obj, attr_name)
+        return attr_val
     elif isinstance(maybe_stub, StubObject):
         if not hasattr(maybe_stub, "__stub_cache"):
             args = concretize(maybe_stub.args)

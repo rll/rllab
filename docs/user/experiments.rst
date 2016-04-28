@@ -96,7 +96,6 @@ see some log messages like the following:
     2016-02-14 14:31:29.922186 PST | -----------------------  -------------
 
 
-=====================
 Stub Mode Experiments
 =====================
 
