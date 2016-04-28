@@ -32,7 +32,7 @@ the file is as follows:
 
     policy = GaussianMLPPolicy(
         env_spec=env.spec,
-        # The neural network policy should have two hidden layers, each with 32 hidden units.
+        # The neural network policy should have two hidden layers, each with 8 hidden units.
         hidden_sizes=(8, 8)
     )
 
