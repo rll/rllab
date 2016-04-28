@@ -19,7 +19,6 @@ the file is as follows:
     from __future__ import print_function
     from __future__ import absolute_import
 
-
     from rllab.algos.trpo import TRPO
     from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
     from rllab.envs.gym_env import GymEnv
@@ -28,7 +27,6 @@ the file is as follows:
     from rllab.policies.gaussian_mlp_policy import GaussianMLPPolicy
 
     stub(globals())
-
 
     env = normalize(GymEnv("Pendulum-v0"))
 
@@ -65,6 +63,7 @@ the file is as follows:
         # plot=True,
     )
 
+
 Running the script will automatically record the episodic total reward and
 periodically record video. When the script finishes running, you will see an
 instruction of how to upload it to the online scoreboard, similar to the following
@@ -95,4 +94,5 @@ On the other hand, rllab is a more opinionated framework with a set of built-in
 algorithm implementations which are agnostic of how the environment or the policy
 is laid out, as well as fine grained components for developing and experimenting
 with new reinforcement learning algorithms. rllab is fully compatible with OpenAI
-Gym through a simple-to-use interface.
+Gym. Our reference implementations enable faster experimentation of research ideas
+ and support seamless upload to Gym's scoreboard.
