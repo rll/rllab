@@ -95,4 +95,4 @@ algorithm implementations which are agnostic of how the environment or the polic
 is laid out, as well as fine grained components for developing and experimenting
 with new reinforcement learning algorithms. rllab is fully compatible with OpenAI
 Gym. Our reference implementations enable faster experimentation of research ideas
- and support seamless upload to Gym's scoreboard.
+and support seamless upload to Gym's scoreboard.
