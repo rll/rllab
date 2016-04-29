@@ -26,6 +26,13 @@ The rllab user guide explains how to install rllab, how to run experiments, and 
    user/implement_algo_advanced
 
 
+Citing rllab
+============
+
+If you use rllab for academic research, you are highly encouraged to cite the following paper:
+
+- Yan Duan, Xi Chen, Rein Houthooft, John Schulman, Pieter Abbeel. "`Benchmarking Deep Reinforcement Learning for Continuous Control <http://arxiv.org/abs/1604.06778>`_. *Proceedings of the 33rd International Conference on Machine Learning (ICML), 2016.*
+
 
 Indices and tables
 ==================
