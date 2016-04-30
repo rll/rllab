@@ -303,13 +303,17 @@ the relevant code looks like the following:
 
     path_baseline = baseline.predict(path)
     advantages = []
+    returns = []
     return_so_far = 0
     for t in xrange(len(rewards) - 1, -1, -1):
         return_so_far = rewards[t] + discount * return_so_far
+        returns.append(return_so_far)
         advantage = return_so_far - path_baseline[t]
         advantages.append(advantage)
     # The advantages are stored backwards in time, so we need to revert it
     advantages = np.array(advantages[::-1])
+    # And we need to do the same thing for the list of returns
+    returns = np.array(returns[::-1])
 
 Normalizing the returns
 -----------------------
@@ -321,6 +325,20 @@ before computing the gradients. In terms of code, this would be:
 .. code-block:: py
 
     advantages = (advantages - np.mean(advantages)) / (np.std(advantages) + 1e-8)
+
+Training the baseline
+---------------------
+
+After each iteration, we use the newly collected trajectories to train our baseline:
+
+.. code-block:: py
+
+    baseline.fit(paths)
+
+The reason that this is executed after computing the baselines along the given
+trajectories is that in the extreme case, if we only have one trajectory starting
+from each state, and if the baseline could fit the data perfectly, then all the
+advantages would be zero, giving us no gradient signals at all.
 
 Now, we can train the policy much faster (we need to change the learning rate
 accordingly because of the rescaling). The complete source code so far is

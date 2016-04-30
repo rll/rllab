@@ -108,19 +108,26 @@ for _ in xrange(n_itr):
         )
         path_baseline = baseline.predict(path)
         advantages = []
+        returns = []
         return_so_far = 0
         for t in xrange(len(rewards) - 1, -1, -1):
             return_so_far = rewards[t] + discount * return_so_far
+            returns.append(return_so_far)
             advantage = return_so_far - path_baseline[t]
             advantages.append(advantage)
         # The advantages are stored backwards in time, so we need to revert it
         advantages = np.array(advantages[::-1])
+        # And we need to do the same thing for the list of returns
+        returns = np.array(returns[::-1])
 
         advantages = (advantages - np.mean(advantages)) / (np.std(advantages) + 1e-8)
 
         path["advantages"] = advantages
+        path["returns"] = returns
 
         paths.append(path)
+
+    baseline.fit(paths)
 
     observations = np.concatenate([p["observations"] for p in paths])
     actions = np.concatenate([p["actions"] for p in paths])
