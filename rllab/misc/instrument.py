@@ -23,7 +23,20 @@ import numpy as np
 from rllab.viskit.core import flatten
 
 
-class StubAttr(object):
+class StubBase(object):
+    def __getitem__(self, item):
+        return StubMethodCall(self, "__getitem__", args=[item], kwargs=dict())
+
+    def __getattr__(self, item):
+        try:
+            return super(self.__class__, self).__getattribute__(item)
+        except AttributeError:
+            if item.startswith("__") and item.endswith("__"):
+                raise
+            return StubAttr(self, item)
+
+
+class StubAttr(StubBase):
     def __init__(self, obj, attr_name):
         self.__dict__["_obj"] = obj
         self.__dict__["_attr_name"] = attr_name
@@ -39,20 +52,13 @@ class StubAttr(object):
     def __call__(self, *args, **kwargs):
         return StubMethodCall(self.obj, self.attr_name, args, kwargs)
 
-    def __getattr__(self, item):
-        try:
-            return super(StubAttr, self).__getattribute__(item)
-        except AttributeError:
-            if item.startswith("__") and item.endswith("__"):
-                raise
-            return StubAttr(self, item)
-
     def __str__(self):
         return "StubAttr(%s, %s)" % (str(self.obj), str(self.attr_name))
 
 
-class StubMethodCall(Serializable):
+class StubMethodCall(StubBase, Serializable):
     def __init__(self, obj, method_name, args, kwargs):
+        self._serializable_initialized = False
         Serializable.quick_init(self, locals())
         self.obj = obj
         self.method_name = method_name
@@ -64,7 +70,7 @@ class StubMethodCall(Serializable):
             str(self.obj), str(self.method_name), str(self.args), str(self.kwargs))
 
 
-class StubClass(object):
+class StubClass(StubBase):
     def __init__(self, proxy_class):
         self.proxy_class = proxy_class
 
@@ -91,7 +97,7 @@ class StubClass(object):
         return "StubClass(%s)" % self.proxy_class
 
 
-class StubObject(object):
+class StubObject(StubBase):
     def __init__(self, __proxy_class, *args, **kwargs):
         if len(args) > 0:
             spec = inspect.getargspec(__proxy_class.__init__)
@@ -357,6 +363,8 @@ def run_experiment_lite(
         if docker_image is None:
             docker_image = config.DOCKER_IMAGE
         for task in batch_tasks:
+            if 'env' in task:
+                assert task.pop('env') is None
             task["resources"] = params.pop("resouces", config.KUBE_DEFAULT_RESOURCES)
             task["node_selector"] = params.pop("node_selector", config.KUBE_DEFAULT_NODE_SELECTOR)
             task["exp_prefix"] = exp_prefix
@@ -501,6 +509,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         spot_price=config.AWS_SPOT_PRICE,
         iam_instance_profile_name=config.AWS_IAM_INSTANCE_PROFILE_NAME,
         security_groups=config.AWS_SECURITY_GROUPS,
+
     )
 
     if aws_config is None:
@@ -613,6 +622,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             Name=aws_config["iam_instance_profile_name"],
         ),
     )
+    if aws_config.get("placement", None) is not None:
+        instance_args["Placement"] = aws_config["placement"]
     if not aws_config["spot"]:
         instance_args["MinCount"] = 1
         instance_args["MaxCount"] = 1
@@ -748,6 +759,7 @@ def to_lab_kube_pod(
     post_commands.append('aws s3 cp --recursive %s %s' %
                          (log_dir,
                           remote_log_dir))
+    # post_commands.append('sleep 500000')
     # command = to_docker_command(params, docker_image=docker_image, script=script,
     #                             pre_commands=pre_commands,
     #                             post_commands=post_commands)
