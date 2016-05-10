@@ -66,14 +66,15 @@ class GaussianMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
         obs_var = mean_network.input_var
 
         if adaptive_std:
-            l_log_std = MLP(
+            std_network = MLP(
                 input_shape=(obs_dim,),
-                input_var=obs_var,
+                input_layer=mean_network.input_layer,
                 output_dim=action_dim,
                 hidden_sizes=std_hidden_sizes,
                 hidden_nonlinearity=std_hidden_nonlinearity,
                 output_nonlinearity=None,
-            ).output_layer
+            )
+            l_log_std = std_network.output_layer
         else:
             l_log_std = ParamLayer(
                 mean_network.input_layer,
