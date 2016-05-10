@@ -34,14 +34,17 @@ class MLP(object):
     def __init__(self, input_shape, output_dim, hidden_sizes, hidden_nonlinearity,
                  output_nonlinearity, hidden_W_init=LI.GlorotUniform(), hidden_b_init=LI.Constant(0.),
                  output_W_init=LI.GlorotUniform(), output_b_init=LI.Constant(0.),
-                 name=None, input_var=None):
+                 name=None, input_var=None, input_layer=None):
 
         if name is None:
             prefix = ""
         else:
             prefix = name + "_"
 
-        l_in = L.InputLayer(shape=(None,) + input_shape, input_var=input_var)
+        if input_layer is None:
+            l_in = L.InputLayer(shape=(None,) + input_shape, input_var=input_var)
+        else:
+            l_in = input_layer
         self._layers = [l_in]
         l_hid = l_in
         for idx, hidden_size in enumerate(hidden_sizes):
