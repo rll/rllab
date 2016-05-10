@@ -6,7 +6,14 @@ from nose2.tools import such
 
 
 class TestClass(object):
-    pass
+    @property
+    def arr(self):
+        return [1, 2, 3]
+
+    @property
+    def compound_arr(self):
+        return [dict(a=1)]
+
 
 with such.A("instrument") as it:
     @it.should
@@ -20,6 +27,7 @@ with such.A("instrument") as it:
         it.assertIsInstance(modified(), instrument.StubObject)
         it.assertEqual(instrument.concretize((5,)), (5,))
         it.assertIsInstance(instrument.concretize(modified()), TestClass)
+
 
     @it.should
     def test_chained_call():
