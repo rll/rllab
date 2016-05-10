@@ -1,4 +1,5 @@
 from rllab.misc import ext
+from rllab.misc import logger
 from rllab.core.serializable import Serializable
 # from rllab.algo.first_order_method import parse_update_method
 from rllab.optimizers.minibatch_dataset import BatchDataset
@@ -21,6 +22,7 @@ class FirstOrderOptimizer(Serializable):
             tolerance=1e-6,
             batch_size=32,
             callback=None,
+            verbose=False,
             **kwargs):
         """
 
@@ -41,6 +43,7 @@ class FirstOrderOptimizer(Serializable):
         self._max_epochs = max_epochs
         self._tolerance = tolerance
         self._batch_size = batch_size
+        self._verbose = verbose
 
     def update_opt(self, loss, target, inputs, extra_inputs=None, **kwargs):
         """
@@ -93,6 +96,8 @@ class FirstOrderOptimizer(Serializable):
         dataset = BatchDataset(inputs, self._batch_size, extra_inputs=extra_inputs)
 
         for epoch in xrange(self._max_epochs):
+            if self._verbose:
+                logger.log("Epoch %d" % epoch)
             for batch in dataset.iterate(update=True):
                 f_opt(*batch)
 

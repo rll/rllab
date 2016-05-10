@@ -200,6 +200,8 @@ class GaussianMLPRegressor(LasagnePowered, Serializable):
         self._optimizer.optimize(inputs)
         loss_after = self._optimizer.loss(inputs)
         logger.record_tabular(prefix + 'LossAfter', loss_after)
+        if self._use_trust_region:
+            logger.record_tabular(prefix + 'MeanKL', self._optimizer.constraint_val(inputs))
         logger.record_tabular(prefix + 'dLoss', loss_before - loss_after)
 
     def predict(self, xs):
