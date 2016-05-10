@@ -142,9 +142,16 @@ class VariantGenerator(object):
 
     def __init__(self):
         self._variants = []
+        self._populate_variants()
 
-    def add(self, key, vals):
-        self._variants.append((key, vals))
+    def add(self, key, vals, **kwargs):
+        self._variants.append((key, vals, kwargs))
+
+    def _populate_variants(self):
+        methods = inspect.getmembers(self.__class__, predicate=inspect.ismethod)
+        methods = [x[1].__get__(self, self.__class__) for x in methods if getattr(x[1], '__is_variant', False)]
+        for m in methods:
+            self.add(m.__name__, m, **getattr(m, "__variant_config", dict()))
 
     def variants(self, randomized=False):
         ret = list(self.ivariants())
@@ -152,11 +159,21 @@ class VariantGenerator(object):
             np.random.shuffle(ret)
         return ret
 
+    def to_name_suffix(self, variant):
+        suffix = []
+        for k, vs, cfg in self._variants:
+            if not cfg.get("hide", False):
+                suffix.append(k + "_" + str(variant[k]))
+        return "_".join(suffix)
+
     def ivariants(self):
         dependencies = list()
-        for key, vals in self._variants:
+        for key, vals, _ in self._variants:
             if hasattr(vals, "__call__"):
                 args = inspect.getargspec(vals).args
+                if hasattr(vals, 'im_self'):
+                    # remove the first 'self' parameter
+                    args = args[1:]
                 dependencies.append((key, set(args)))
             else:
                 dependencies.append((key, set()))
@@ -182,18 +199,15 @@ class VariantGenerator(object):
     def _ivariants_sorted(self, sorted_keys):
         if len(sorted_keys) == 0:
             yield dict()
-        elif len(sorted_keys) == 1:
-            key = sorted_keys[0]
-            vals = [v for k, v in self._variants if k == key][0]
-            for val in vals:
-                yield {key: val}
         else:
             first_keys = sorted_keys[:-1]
             first_variants = self._ivariants_sorted(first_keys)
             last_key = sorted_keys[-1]
-            last_vals = [v for k, v in self._variants if k == last_key][0]
+            last_vals = [v for k, v, _ in self._variants if k == last_key][0]
             if hasattr(last_vals, "__call__"):
                 last_val_keys = inspect.getargspec(last_vals).args
+                if hasattr(last_vals, 'im_self'):
+                    last_val_keys = last_val_keys[1:]
             else:
                 last_val_keys = None
             for variant in first_variants:
@@ -205,6 +219,17 @@ class VariantGenerator(object):
                 else:
                     for last_choice in last_vals:
                         yield dict(variant, **{last_key: last_choice})
+
+
+def variant(*args, **kwargs):
+    def _variant(fn):
+        fn.__is_variant = True
+        fn.__variant_config = kwargs
+        return fn
+
+    if len(args) == 1 and callable(args[0]):
+        return _variant(args[0])
+    return _variant
 
 
 def stub(glbs):
@@ -886,6 +911,7 @@ def concretize(maybe_stub):
                 maybe_stub.__stub_cache = maybe_stub.proxy_class(
                     *args, **kwargs)
             except Exception as e:
+                print("Error while instantiating %s" % maybe_stub.proxy_class)
                 import traceback
                 traceback.print_exc()
                 # import ipdb; ipdb.set_trace()
