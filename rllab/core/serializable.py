@@ -8,7 +8,7 @@ class Serializable(object):
         self.__kwargs = kwargs
 
     def quick_init(self, locals_):
-        if hasattr(self, "_serializable_initialized"):
+        if getattr(self, "_serializable_initialized", False):
             return
         spec = inspect.getargspec(self.__init__)
         # Exclude the first "self" parameter
