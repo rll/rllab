@@ -92,7 +92,7 @@ class CategoricalMLPRegressor(LasagnePowered, Serializable):
         old_info_vars = dict(prob=old_prob_var)
         info_vars = dict(prob=prob_var)
 
-        dist = self._dist = Categorical()
+        dist = self._dist = Categorical(output_dim)
 
         mean_kl = TT.mean(dist.kl_sym(old_info_vars, info_vars))
 

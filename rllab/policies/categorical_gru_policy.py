@@ -63,7 +63,7 @@ class CategoricalGRUPolicy(StochasticPolicy, LasagnePowered, Serializable):
         self._prev_action = None
         self._prev_hidden = None
         self._hidden_sizes = hidden_sizes
-        self._dist = RecurrentCategorical()
+        self._dist = RecurrentCategorical(env_spec.action_space.n)
 
         self.reset()
 
