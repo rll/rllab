@@ -20,6 +20,12 @@ def from_onehot(x_var):
 
 
 class Categorical(Distribution):
+    def __init__(self, dim):
+        self._dim = dim
+
+    @property
+    def dim(self):
+        return self._dim
 
     def kl_sym(self, old_dist_info_vars, new_dist_info_vars):
         """

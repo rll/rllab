@@ -96,7 +96,7 @@ class GaussianMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
         self._l_mean = l_mean
         self._l_log_std = l_log_std
 
-        self._dist = DiagonalGaussian()
+        self._dist = DiagonalGaussian(action_dim)
 
         LasagnePowered.__init__(self, [l_mean, l_log_std])
         super(GaussianMLPPolicy, self).__init__(env_spec)

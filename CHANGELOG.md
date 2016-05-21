@@ -1,3 +1,7 @@
+# 2016-05-21
+
+- Updated Distribution class to include dimensions.
+
 # 2016-04-24
 
 - Updated Mujoco to v1.31

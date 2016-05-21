@@ -45,7 +45,7 @@ class CategoricalMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
         self._f_prob = ext.compile_function([prob_network.input_layer.input_var], L.get_output(
             prob_network.output_layer))
 
-        self._dist = Categorical()
+        self._dist = Categorical(env_spec.action_space.n)
 
         super(CategoricalMLPPolicy, self).__init__(env_spec)
         LasagnePowered.__init__(self, [prob_network.output_layer])

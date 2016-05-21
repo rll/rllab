@@ -8,8 +8,13 @@ TINY = 1e-8
 
 
 class RecurrentCategorical(Distribution):
-    def __init__(self):
-        self._cat = Categorical()
+    def __init__(self, dim):
+        self._cat = Categorical(dim)
+        self._dim = dim
+
+    @property
+    def dim(self):
+        return self._dim
 
     def kl_sym(self, old_dist_info_vars, new_dist_info_vars):
         """

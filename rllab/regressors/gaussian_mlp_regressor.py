@@ -137,7 +137,7 @@ class GaussianMLPRegressor(LasagnePowered, Serializable):
         normalized_old_means_var = (old_means_var - y_mean_var) / y_std_var
         normalized_old_log_stds_var = old_log_stds_var - TT.log(y_std_var)
 
-        dist = self._dist = DiagonalGaussian()
+        dist = self._dist = DiagonalGaussian(output_dim)
 
         normalized_dist_info_vars = dict(mean=normalized_means_var, log_std=normalized_log_stds_var)
 

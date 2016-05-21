@@ -89,7 +89,7 @@ class GaussianGRUPolicy(StochasticPolicy, LasagnePowered, Serializable):
         self._prev_action = None
         self._prev_hidden = None
         self._hidden_sizes = hidden_sizes
-        self._dist = RecurrentDiagonalGaussian()
+        self._dist = RecurrentDiagonalGaussian(action_dim)
 
         self.reset()
 
