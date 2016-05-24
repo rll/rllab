@@ -31,6 +31,8 @@ class GaussianMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
             std_hidden_nonlinearity=NL.tanh,
             hidden_nonlinearity=NL.tanh,
             output_nonlinearity=None,
+            mean_network=None,
+            std_network=None,
     ):
         """
         :param env_spec:
@@ -44,6 +46,8 @@ class GaussianMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
         :param std_hidden_nonlinearity:
         :param hidden_nonlinearity: nonlinearity used for each hidden layer
         :param output_nonlinearity: nonlinearity for the output layer
+        :param mean_network: custom network for the output mean
+        :param std_network: custom network for the output log std
         :return:
         """
         Serializable.quick_init(self, locals())
@@ -53,36 +57,40 @@ class GaussianMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
         action_dim = env_spec.action_space.flat_dim
 
         # create network
-        mean_network = MLP(
-            input_shape=(obs_dim,),
-            output_dim=action_dim,
-            hidden_sizes=hidden_sizes,
-            hidden_nonlinearity=hidden_nonlinearity,
-            output_nonlinearity=output_nonlinearity,
-        )
+        if mean_network is None:
+            mean_network = MLP(
+                input_shape=(obs_dim,),
+                output_dim=action_dim,
+                hidden_sizes=hidden_sizes,
+                hidden_nonlinearity=hidden_nonlinearity,
+                output_nonlinearity=output_nonlinearity,
+            )
         self._mean_network = mean_network
 
         l_mean = mean_network.output_layer
         obs_var = mean_network.input_var
 
-        if adaptive_std:
-            std_network = MLP(
-                input_shape=(obs_dim,),
-                input_layer=mean_network.input_layer,
-                output_dim=action_dim,
-                hidden_sizes=std_hidden_sizes,
-                hidden_nonlinearity=std_hidden_nonlinearity,
-                output_nonlinearity=None,
-            )
+        if std_network is not None:
             l_log_std = std_network.output_layer
         else:
-            l_log_std = ParamLayer(
-                mean_network.input_layer,
-                num_units=action_dim,
-                param=lasagne.init.Constant(np.log(init_std)),
-                name="output_log_std",
-                trainable=learn_std,
-            )
+            if adaptive_std:
+                std_network = MLP(
+                    input_shape=(obs_dim,),
+                    input_layer=mean_network.input_layer,
+                    output_dim=action_dim,
+                    hidden_sizes=std_hidden_sizes,
+                    hidden_nonlinearity=std_hidden_nonlinearity,
+                    output_nonlinearity=None,
+                )
+                l_log_std = std_network.output_layer
+            else:
+                l_log_std = ParamLayer(
+                    mean_network.input_layer,
+                    num_units=action_dim,
+                    param=lasagne.init.Constant(np.log(init_std)),
+                    name="output_log_std",
+                    trainable=learn_std,
+                )
 
         self.min_std = min_std
 
