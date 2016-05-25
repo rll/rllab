@@ -38,7 +38,7 @@ class FirstOrderOptimizer(Serializable):
         self._opt_fun = None
         self._target = None
         self._callback = callback
-        update_method = partial(lasagne.updates.adam, learning_rate=learning_rate)
+        update_method = partial(update_method, learning_rate=learning_rate)
         self._update_method = update_method
         self._max_epochs = max_epochs
         self._tolerance = tolerance
