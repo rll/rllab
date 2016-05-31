@@ -15,9 +15,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('log_dir', type=str,
                         help='path to the logging directory')
+    parser.add_argument('--algorithm_id', type=str, default=None, help='Algorithm ID')
     args = parser.parse_args()
     snapshot_dir = osp.abspath(osp.join(args.log_dir, ".."))
     params_file_path = osp.join(snapshot_dir, "params.json")
     params_json = load_params(params_file_path)
-    algo_name = params_json['json_args']['algo']['_name'].split(".")[-1]
-    gym.upload(args.log_dir, algorithm_id=algo_name)
+    gym.upload(args.log_dir, algorithm_id=args.algorithm_id)
