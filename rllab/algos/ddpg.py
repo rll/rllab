@@ -123,7 +123,7 @@ class DDPG(RLAlgorithm):
         :param min_pool_size: Minimum size of the pool to start training.
         :param replay_pool_size: Size of the experience replay pool.
         :param discount: Discount factor for the cumulative return.
-        :param max_path_length: Discount factor for the cumulative return.
+        :param max_path_length: Maximum length of the trajectory.
         :param qf_weight_decay: Weight decay factor for parameters of the Q function.
         :param qf_update_method: Online optimization method for training Q function.
         :param qf_learning_rate: Learning rate for training Q function.
