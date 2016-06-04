@@ -33,7 +33,7 @@
               vertices="${compute_rect_vertices((0, 0), (0, pole_height), pole_width/2)}"
       />
     </body>
-    <body name="track" type="static" position="0,-0.1">
+    <body name="track" type="static" position="0,${cart_height/2}">
       <fixture friction="${pole_friction}" group="-1" shape="polygon" box="100,0.1"/>
     </body>
     <joint type="revolute" name="pole_joint" bodyA="cart" bodyB="pole" anchor="0,${cart_height}"/>
