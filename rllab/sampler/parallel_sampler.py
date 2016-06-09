@@ -1,5 +1,5 @@
 from rllab.sampler.utils import rollout
-from rllab.sampler.stateful_pool import singleton_pool
+from rllab.sampler.stateful_pool import singleton_pool, SharedGlobal
 from rllab.misc import ext
 from rllab.misc import logger
 from rllab.misc import tensor_utils
@@ -8,8 +8,9 @@ import numpy as np
 
 
 def _worker_init(G, id):
-    import os
-    os.environ['THEANO_FLAGS'] = 'device=cpu'
+    if singleton_pool.n_parallel > 1:
+        import os
+        os.environ['THEANO_FLAGS'] = 'device=cpu'
     G.worker_id = id
 
 
@@ -18,12 +19,25 @@ def initialize(n_parallel):
     singleton_pool.run_each(_worker_init, [(id,) for id in xrange(singleton_pool.n_parallel)])
 
 
-def _worker_populate_task(G, env, policy):
+def _get_scoped_G(G, scope):
+    if scope is None:
+        return G
+    if not hasattr(G, "scopes"):
+        G.scopes = dict()
+    if scope not in G.scopes:
+        G.scopes[scope] = SharedGlobal()
+        G.scopes[scope].worker_id = G.worker_id
+    return G.scopes[scope]
+
+
+def _worker_populate_task(G, env, policy, scope=None):
+    G = _get_scoped_G(G, scope)
     G.env = pickle.loads(env)
     G.policy = pickle.loads(policy)
 
 
-def _worker_terminate_task(G):
+def _worker_terminate_task(G, scope=None):
+    G = _get_scoped_G(G, scope)
     if getattr(G, "env", None):
         G.env.terminate()
         G.env = None
@@ -32,19 +46,25 @@ def _worker_terminate_task(G):
         G.policy = None
 
 
-def populate_task(env, policy):
+def populate_task(env, policy, scope=None):
     logger.log("Populating workers...")
-    singleton_pool.run_each(
-        _worker_populate_task,
-        [(pickle.dumps(env), pickle.dumps(policy))] * singleton_pool.n_parallel
-    )
+    if singleton_pool.n_parallel > 1:
+        singleton_pool.run_each(
+            _worker_populate_task,
+            [(pickle.dumps(env), pickle.dumps(policy), scope)] * singleton_pool.n_parallel
+        )
+    else:
+        # avoid unnecessary copying
+        G = _get_scoped_G(singleton_pool.G, scope)
+        G.env = env
+        G.policy = policy
     logger.log("Populated")
 
 
-def terminate_task():
+def terminate_task(scope=None):
     singleton_pool.run_each(
         _worker_terminate_task,
-        [tuple()] * singleton_pool.n_parallel
+        [(scope,)] * singleton_pool.n_parallel
     )
 
 
@@ -59,11 +79,13 @@ def set_seed(seed):
     )
 
 
-def _worker_set_policy_params(G, params):
+def _worker_set_policy_params(G, params, scope=None):
+    G = _get_scoped_G(G, scope)
     G.policy.set_param_values(params)
 
 
-def _worker_collect_one_path(G, max_path_length):
+def _worker_collect_one_path(G, max_path_length, scope=None):
+    G = _get_scoped_G(G, scope)
     path = rollout(G.env, G.policy, max_path_length)
     return path, len(path["rewards"])
 
@@ -71,7 +93,8 @@ def _worker_collect_one_path(G, max_path_length):
 def sample_paths(
         policy_params,
         max_samples,
-        max_path_length=np.inf):
+        max_path_length=np.inf,
+        scope=None):
     """
     :param policy_params: parameters for the policy. This will be updated on each worker process
     :param max_samples: desired maximum number of samples to be collected. The actual number of collected samples
@@ -82,12 +105,12 @@ def sample_paths(
     """
     singleton_pool.run_each(
         _worker_set_policy_params,
-        [(policy_params,)] * singleton_pool.n_parallel
+        [(policy_params, scope)] * singleton_pool.n_parallel
     )
     return singleton_pool.run_collect(
         _worker_collect_one_path,
         threshold=max_samples,
-        args=(max_path_length,),
+        args=(max_path_length, scope),
         show_prog_bar=True
     )
 
