@@ -4,6 +4,8 @@
 
 # rllab
 
+[![Join the chat at https://gitter.im/rllab/rllab](https://badges.gitter.im/rllab/rllab.svg)](https://gitter.im/rllab/rllab?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 rllab is a framework for developing and evaluating reinforcement learning algorithms. It includes a wide range of continuous control tasks plus implementations of the following algorithms:
 
 - [REINFORCE](https://github.com/rllab/rllab/blob/master/rllab/algos/vpg.py)
