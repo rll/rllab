@@ -24,10 +24,11 @@ dependencies:
         - pyprind
         - ipdb
         - boto3
+        - PyOpenGL
         - nose2
         - pyzmq
         - msgpack-python
-        - git+https://github.com/Theano/Theano.git@9d0c52b9254c0d30dacbf1e2a231112ee3e3b99a#egg=Theano
+        - git+https://github.com/Theano/Theano.git@adfe319ce6b781083d8dc3200fb4481b00853791#egg=Theano
         - git+https://github.com/Lasagne/Lasagne.git@19b9d958507e7300e355d7cd1a6bbff2c7726c07#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
         - awscli
