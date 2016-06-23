@@ -28,15 +28,15 @@ class ISSampler(BatchSampler):
         """
         return self._hist
 
-    def add_history(self, policy, paths):
+    def add_history(self, policy_distribution, paths):
         """
-        Store policy and paths in history
+        Store policy distribution and paths in history
         """
-        self._hist.append((policy, paths))
+        self._hist.append((policy_distribution, paths))
 
     def get_history_list(self, n_past = 'all'):
         """
-        Get list of (policy, data) tuples from history
+        Get list of (distribution, data) tuples from history
         """
         if n_past == 'all':
             return self._hist
@@ -49,7 +49,7 @@ class ISSampler(BatchSampler):
             paths = self.obtain_is_samples(itr)
         else:
             paths = super(ISSampler, self).obtain_samples(itr)
-            self.add_history(self.algo.policy, paths)
+            self.add_history(self.algo.policy.distribution, paths)
 
         self._is_itr = (self._is_itr + 1) % 2
         return paths
@@ -57,10 +57,10 @@ class ISSampler(BatchSampler):
 
     def obtain_is_samples(self, itr):
         paths = []
-        for hist_policy, hist_paths in self.get_history_list(self.n_backtrack):
+        for hist_policy_distribution, hist_paths in self.get_history_list(self.n_backtrack):
             h_paths = self.sample_isweighted_paths(
                 policy=self.algo.policy,
-                hist_policy=hist_policy,
+                hist_policy_distribution=hist_policy_distribution,
                 max_samples=self.algo.batch_size,
                 max_path_length=self.algo.max_path_length,
                 paths=hist_paths,
@@ -77,7 +77,7 @@ class ISSampler(BatchSampler):
     def sample_isweighted_paths(
             self,
             policy,
-            hist_policy,
+            hist_policy_distribution,
             max_samples,
             max_path_length=100,
             paths=None,
@@ -100,10 +100,10 @@ class ISSampler(BatchSampler):
         samples = copy.deepcopy(samples)
 
         dist1 = policy.distribution
-        dist2 = hist_policy.distribution
+        dist2 = hist_policy_distribution
         for path in samples:
             _, agent_infos = policy.get_actions(path['observations'])
-            _, hist_agent_infos = hist_policy.get_actions(path['observations'])
+            hist_agent_infos = path['agent_infos']
             path['agent_infos'] = agent_infos
 
             # apply importance sampling weight
