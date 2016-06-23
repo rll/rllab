@@ -3,7 +3,7 @@ from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
 from rllab.envs.box2d.cartpole_env import CartpoleEnv
 from rllab.envs.normalized_env import normalize
 from rllab.policies.gaussian_mlp_policy import GaussianMLPPolicy
-from contrib.is_sampler import ISSampler
+from contrib.alexbeloi.is_sampler import ISSampler
 
 """
 Example using VPG with ISSampler, iterations alternate between live and
