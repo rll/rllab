@@ -7,6 +7,7 @@ from rllab.misc import tensor_utils
 from rllab.algos import util
 import rllab.misc.logger as logger
 import rllab.plotter as plotter
+from rllab.policies.base import Policy
 
 
 class BatchSampler(Sampler):
@@ -21,6 +22,11 @@ class BatchSampler(Sampler):
 
     def shutdown_worker(self):
         parallel_sampler.terminate_task(scope=self.algo.scope)
+
+    def obtain_samples(self, itr):
+        cur_params = self.algo.policy.get_param_values()
+        paths = parallel_sampler.sample_paths(
+            policy_params=cur_params,
             max_samples=self.algo.batch_size,
             max_path_length=self.algo.max_path_length,
             scope=self.algo.scope,
