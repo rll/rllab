@@ -63,11 +63,13 @@ class DeterministicMLPPolicy(Policy, LasagnePowered, Serializable):
         LasagnePowered.__init__(self, [l_output])
 
     def get_action(self, observation):
-        action = self._f_actions([observation])[0]
+        flat_obs = self.observation_space.flatten(observation)
+        action = self._f_actions([flat_obs])[0]
         return action, dict()
 
     def get_actions(self, observations):
-        return self._f_actions(observations), dict()
+        flat_obs = self.observation_space.flatten_n(observations)
+        return self._f_actions(flat_obs), dict()
 
     def get_action_sym(self, obs_var):
         return L.get_output(self._output_layer, obs_var)
