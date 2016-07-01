@@ -234,10 +234,19 @@ class DDPG(RLAlgorithm):
                     terminal = True
                     # only include the terminal transition in this case if the flag was set
                     if self.include_horizon_terminal_transitions:
-                        pool.add_sample(observation, action, reward * self.scale_reward, terminal)
+                        pool.add_sample(
+                            self.env.observation_space.flatten(observation),
+                            self.env.action_space.flatten(action),
+                            reward * self.scale_reward,
+                            terminal
+                        )
                 else:
-                    pool.add_sample(observation, action, reward * self.scale_reward, terminal)
-
+                    pool.add_sample(
+                        self.env.observation_space.flatten(observation),
+                        self.env.action_space.flatten(action),
+                        reward * self.scale_reward,
+                        terminal
+                    )
                 observation = next_observation
 
                 if pool.size >= self.min_pool_size:
