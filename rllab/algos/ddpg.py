@@ -224,7 +224,7 @@ class DDPG(RLAlgorithm):
                     self.es_path_returns.append(path_return)
                     path_length = 0
                     path_return = 0
-                action = self.es.get_action(itr, self.env.observation_space.flatten(observation), policy=sample_policy)  # qf=qf)
+                action = self.es.get_action(itr, observation, policy=sample_policy)  # qf=qf)
 
                 next_observation, reward, terminal, _ = self.env.step(action)
                 path_length += 1
