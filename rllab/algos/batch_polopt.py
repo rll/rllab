@@ -217,7 +217,7 @@ class BatchPolopt(RLAlgorithm):
         self.baseline = baseline
         self.scope = scope
         self.n_itr = n_itr
-        self.start_itr = start_itr
+        self.current_itr = start_itr
         self.batch_size = batch_size
         self.max_path_length = max_path_length
         self.discount = discount
@@ -245,14 +245,16 @@ class BatchPolopt(RLAlgorithm):
     def train(self):
         self.start_worker()
         self.init_opt()
-        for itr in xrange(self.start_itr, self.n_itr):
+        for itr in xrange(self.current_itr, self.n_itr):
             with logger.prefix('itr #%d | ' % itr):
                 paths = self.sampler.obtain_samples(itr)
                 samples_data = self.sampler.process_samples(itr, paths)
                 self.log_diagnostics(paths)
                 self.optimize_policy(itr, samples_data)
                 logger.log("saving snapshot...")
-                params = self.get_itr_snapshot(itr, samples_data)  # , **kwargs)
+                params = self.get_itr_snapshot(itr, samples_data)
+                self.current_itr = itr + 1
+                params["algo"] = self
                 if self.store_paths:
                     params["paths"] = samples_data["paths"]
                 logger.save_itr_params(itr, params)
