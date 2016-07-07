@@ -112,4 +112,4 @@ class ISSampler(BatchSampler):
             is_ratio = exp(sum(loglike_p) - sum(loglike_hp))
             path['rewards'] *= is_ratio
 
-        return paths
+        return samples
