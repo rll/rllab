@@ -47,7 +47,7 @@ class NormalizedEnv(ProxyEnv, Serializable):
 
     def _apply_normalize_reward(self, reward):
         self._update_reward_estimate(reward)
-        return (reward - self._reward_mean) / (np.sqrt(self._reward_var) + 1e-8)
+        return reward / (np.sqrt(self._reward_var) + 1e-8)
 
     def reset(self):
         ret = self._wrapped_env.reset()
