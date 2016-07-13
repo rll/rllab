@@ -16,7 +16,7 @@ class ISSampler(BatchSampler):
     n_is_pretrain=0,
     init_is=0,
     skip_is_itrs=False,
-    hist_variance_penalty = 1.0, 
+    hist_variance_penalty = 0.0, 
     max_is_ratio = 0, 
     ess_threshold = 0, 
     ):
