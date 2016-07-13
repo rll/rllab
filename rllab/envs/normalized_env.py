@@ -18,9 +18,10 @@ class NormalizedEnv(ProxyEnv, Serializable):
             obs_alpha=0.001,
             reward_alpha=0.001,
     ):
-        Serializable.quick_init(self, locals())
         ProxyEnv.__init__(self, env)
-        assert isinstance(env.action_space, Box)
+        Serializable.quick_init(self, locals())
+        if not isinstance(env.action_space, Box):
+            print("Environment not using continuous actions; action normalization skipped!")
         self._scale_reward = scale_reward
         self._normalize_obs = normalize_obs
         self._normalize_reward = normalize_reward
@@ -47,7 +48,7 @@ class NormalizedEnv(ProxyEnv, Serializable):
 
     def _apply_normalize_reward(self, reward):
         self._update_reward_estimate(reward)
-        return (reward - self._reward_mean) / (np.sqrt(self._reward_var) + 1e-8)
+        return reward / (np.sqrt(self._reward_var) + 1e-8)
 
     def reset(self):
         ret = self._wrapped_env.reset()
@@ -70,14 +71,20 @@ class NormalizedEnv(ProxyEnv, Serializable):
     @property
     @overrides
     def action_space(self):
-        ub = np.ones(self._wrapped_env.action_space.shape)
-        return spaces.Box(-1 * ub, ub)
+        if isinstance(self._wrapped_env.action_space, Box):
+            ub = np.ones(self._wrapped_env.action_space.shape)
+            return spaces.Box(-1 * ub, ub)
+        return self._wrapped_env.action_space
 
     @overrides
     def step(self, action):
-        lb, ub = self._wrapped_env.action_space.bounds
-        scaled_action = lb + (action + 1.) * 0.5 * (ub - lb)
-        scaled_action = np.clip(scaled_action, lb, ub)
+        if isinstance(self._wrapped_env.action_space, Box):
+            # rescale the action
+            lb, ub = self._wrapped_env.action_space.bounds
+            scaled_action = lb + (action + 1.) * 0.5 * (ub - lb)
+            scaled_action = np.clip(scaled_action, lb, ub)
+        else:
+            scaled_action = action
         wrapped_step = self._wrapped_env.step(scaled_action)
         next_obs, reward, done, info = wrapped_step
         if self._normalize_obs:
