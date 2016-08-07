@@ -4,6 +4,7 @@ channels:
     - https://conda.binstar.org/tlatorre 
     - https://conda.anaconda.org/cjs14
     - https://conda.anaconda.org/menpo
+    - jjhelmus
 dependencies:
     - python==2.7.10
     - numpy==1.10.4
@@ -19,6 +20,7 @@ dependencies:
     - h5py
     - matplotlib
     - opencv
+    - tensorflow=0.9.0
     - pip:
         - atari-py
         - pyprind
@@ -28,6 +30,7 @@ dependencies:
         - nose2
         - pyzmq
         - msgpack-python
+        - cached_property
         - git+https://github.com/Theano/Theano.git@adfe319ce6b781083d8dc3200fb4481b00853791#egg=Theano
         - git+https://github.com/Lasagne/Lasagne.git@19b9d958507e7300e355d7cd1a6bbff2c7726c07#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly

@@ -11,7 +11,7 @@ def flatten_tensors(tensors):
 
 
 def unflatten_tensors(flattened, tensor_shapes):
-    tensor_sizes = map(lambda shape: reduce(operator.mul, shape), tensor_shapes)
+    tensor_sizes = map(np.prod, tensor_shapes)
     indices = np.cumsum(tensor_sizes)[:-1]
     return map(lambda pair: np.reshape(pair[0], pair[1]), zip(np.split(flattened, indices), tensor_shapes))
 
@@ -78,6 +78,21 @@ def concat_tensor_dict_list(tensor_dict_list):
         else:
             v = concat_tensor_list([x[k] for x in tensor_dict_list])
         ret[k] = v
+    return ret
+
+
+def split_tensor_dict_list(tensor_dict):
+    keys = tensor_dict.keys()
+    ret = None
+    for k in keys:
+        vals = tensor_dict[k]
+        if isinstance(vals, dict):
+            vals = split_tensor_dict_list(vals)
+        if ret is None:
+            ret = [{k: v} for v in vals]
+        else:
+            for v, cur_dict in zip(vals, ret):
+                cur_dict[k] = v
     return ret
 
 
