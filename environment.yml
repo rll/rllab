@@ -11,7 +11,7 @@ dependencies:
     - scipy
     - path.py
     - python-dateutil
-    - joblib
+    - joblib==0.9.4
     - mako
     - ipywidgets
     - flask
