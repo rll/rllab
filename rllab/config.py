@@ -5,7 +5,11 @@ PROJECT_PATH = osp.abspath(osp.join(osp.dirname(__file__), '..'))
 
 LOG_DIR = PROJECT_PATH + "/data"
 
+USE_TF = False
+
 DOCKER_IMAGE = "DOCKER_IMAGE"
+
+DOCKERFILE_PATH = "/path/to/Dockerfile"
 
 KUBE_PREFIX = "rllab_"
 
@@ -17,7 +21,7 @@ AWS_S3_PATH = None
 
 AWS_IMAGE_ID = None
 
-AWS_INSTANCE_TYPE = "m4.2xlarge"
+AWS_INSTANCE_TYPE = "m4.xlarge"
 
 AWS_KEY_NAME = "AWS_KEY_NAME"
 
@@ -32,6 +36,10 @@ AWS_ACCESS_SECRET = os.environ.get("AWS_ACCESS_SECRET", None)
 AWS_IAM_INSTANCE_PROFILE_NAME = "rllab"
 
 AWS_SECURITY_GROUPS = ["rllab"]
+
+AWS_SECURITY_GROUP_IDS = []
+
+AWS_NETWORK_INTERFACES = []
 
 AWS_REGION_NAME = "us-east-1"
 
@@ -48,18 +56,21 @@ KUBE_DEFAULT_RESOURCES = {
 }
 
 KUBE_DEFAULT_NODE_SELECTOR = {
-    "aws/type": "m4.2xlarge",
+    "aws/type": "m4.xlarge",
 }
 
-try:
+MUJOCO_KEY_PATH = osp.expanduser("~/.mujoco")
+
+if osp.exists(osp.join(osp.dirname(__file__), "config_personal.py")):
     from config_personal import *
-except:
+else:
     print "Creating your personal config from template..."
-    from subprocess import call
-    call(["cp", osp.join(PROJECT_PATH, "rllab/config_personal_template.py"), osp.join(PROJECT_PATH, "rllab/config_personal.py")])
+    from shutil import copy
+    copy(osp.join(PROJECT_PATH, "rllab/config_personal_template.py"), osp.join(PROJECT_PATH, "rllab/config_personal.py"))
     from config_personal import *
     print "Personal config created, but you should probably edit it before further experiments " \
           "are run"
     if 'CIRCLECI' not in os.environ:
+        print "Exiting."
         import sys; sys.exit(0)
 
