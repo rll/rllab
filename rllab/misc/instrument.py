@@ -20,6 +20,7 @@ import dateutil.tz
 import json
 import numpy as np
 
+from rllab.misc.ext import AttrDict
 from rllab.viskit.core import flatten
 
 
@@ -35,6 +36,39 @@ class StubBase(object):
                 raise
             return StubAttr(self, item)
 
+    def __pow__(self, power, modulo=None):
+        return StubMethodCall(self, "__pow__", [power, modulo], dict())
+
+    def __call__(self, *args, **kwargs):
+        return StubMethodCall(self.obj, self.attr_name, args, kwargs)
+
+    def __add__(self, other):
+        return StubMethodCall(self, "__add__", [other], dict())
+
+    def __rmul__(self, other):
+        return StubMethodCall(self, "__rmul__", [other], dict())
+
+    def __div__(self, other):
+        return StubMethodCall(self, "__div__", [other], dict())
+
+    def __rdiv__(self, other):
+        return StubMethodCall(BinaryOp(), "rdiv", [self, other], dict())  # self, "__rdiv__", [other], dict())
+
+    def __rpow__(self, power, modulo=None):
+        return StubMethodCall(self, "__rpow__", [power, modulo], dict())
+
+
+class BinaryOp(Serializable):
+    def __init__(self):
+        Serializable.quick_init(self, locals())
+
+    def rdiv(self, a, b):
+        return b / a
+        # def __init__(self, opname, a, b):
+        #     self.opname = opname
+        #     self.a = a
+        #     self.b = b
+
 
 class StubAttr(StubBase):
     def __init__(self, obj, attr_name):
@@ -48,9 +82,6 @@ class StubAttr(StubBase):
     @property
     def attr_name(self):
         return self.__dict__["_attr_name"]
-
-    def __call__(self, *args, **kwargs):
-        return StubMethodCall(self.obj, self.attr_name, args, kwargs)
 
     def __str__(self):
         return "StubAttr(%s, %s)" % (str(self.obj), str(self.attr_name))
@@ -116,12 +147,24 @@ class StubObject(StubBase):
         self.proxy_class = dict["proxy_class"]
 
     def __getattr__(self, item):
+        # why doesnt the commented code work?
+        # return StubAttr(self, item)
+        # checks bypassed to allow for accesing instance fileds
         if hasattr(self.proxy_class, item):
             return StubAttr(self, item)
-        raise AttributeError
+        raise AttributeError('Cannot get attribute %s from %s' % (item, self.proxy_class))
 
     def __str__(self):
         return "StubObject(%s, *%s, **%s)" % (str(self.proxy_class), str(self.args), str(self.kwargs))
+
+
+class VariantDict(AttrDict):
+    def __init__(self, d, hidden_keys):
+        super(VariantDict, self).__init__(d)
+        self._hidden_keys = hidden_keys
+
+    def dump(self):
+        return {k: v for k, v in self.iteritems() if k not in self._hidden_keys}
 
 
 class VariantGenerator(object):
@@ -143,13 +186,19 @@ class VariantGenerator(object):
     def __init__(self):
         self._variants = []
         self._populate_variants()
+        self._hidden_keys = []
+        for k, vs, cfg in self._variants:
+            if cfg.get("hide", False):
+                self._hidden_keys.append(k)
 
     def add(self, key, vals, **kwargs):
         self._variants.append((key, vals, kwargs))
 
     def _populate_variants(self):
-        methods = inspect.getmembers(self.__class__, predicate=inspect.ismethod)
-        methods = [x[1].__get__(self, self.__class__) for x in methods if getattr(x[1], '__is_variant', False)]
+        methods = inspect.getmembers(
+            self.__class__, predicate=inspect.ismethod)
+        methods = [x[1].__get__(self, self.__class__)
+                   for x in methods if getattr(x[1], '__is_variant', False)]
         for m in methods:
             self.add(m.__name__, m, **getattr(m, "__variant_config", dict()))
 
@@ -157,7 +206,10 @@ class VariantGenerator(object):
         ret = list(self.ivariants())
         if randomized:
             np.random.shuffle(ret)
-        return ret
+        return map(self.variant_dict, ret)
+
+    def variant_dict(self, variant):
+        return VariantDict(variant, self._hidden_keys)
 
     def to_name_suffix(self, variant):
         suffix = []
@@ -215,10 +267,10 @@ class VariantGenerator(object):
                     last_variants = last_vals(
                         **{k: variant[k] for k in last_val_keys})
                     for last_choice in last_variants:
-                        yield dict(variant, **{last_key: last_choice})
+                        yield AttrDict(variant, **{last_key: last_choice})
                 else:
                     for last_choice in last_vals:
-                        yield dict(variant, **{last_key: last_choice})
+                        yield AttrDict(variant, **{last_key: last_choice})
 
 
 def variant(*args, **kwargs):
@@ -236,8 +288,9 @@ def stub(glbs):
     # replace the __init__ method in all classes
     # hacky!!!
     for k, v in glbs.items():
+        # look at all variables that are instances of a class (not yet Stub)
         if isinstance(v, type) and v != StubClass:
-            glbs[k] = StubClass(v)
+            glbs[k] = StubClass(v)  # and replaces them by a the same but Stub
 
 
 def query_yes_no(question, default="yes"):
@@ -291,7 +344,9 @@ def run_experiment_lite(
         docker_image=None,
         aws_config=None,
         env=None,
+        variant=None,
         use_gpu=False,
+        sync_s3_pkl=False,
         confirm_remote=True,
         terminate_machine=True,
         **kwargs):
@@ -307,15 +362,24 @@ def run_experiment_lite(
     :param aws_config: configuration for AWS. Only used under EC2 mode
     :param env: extra environment variables
     :param kwargs: All other parameters will be passed directly to the entrance python script.
+    :param variant: If provided, should be a dictionary of parameters
     """
     assert stub_method_call is not None or batch_tasks is not None, "Must provide at least either stub_method_call or batch_tasks"
     if batch_tasks is None:
         batch_tasks = [
-            dict(kwargs, stub_method_call=stub_method_call, exp_name=exp_name, log_dir=log_dir, env=env)
+            dict(
+                kwargs,
+                stub_method_call=stub_method_call,
+                exp_name=exp_name,
+                log_dir=log_dir,
+                env=env,
+                variant=variant
+            )
         ]
 
     global exp_count
     global remote_confirmed
+    config.USE_GPU = use_gpu
 
     # params_list = []
 
@@ -326,10 +390,20 @@ def run_experiment_lite(
         exp_count += 1
         params = dict(kwargs)
         if task.get("exp_name", None) is None:
-            task["exp_name"] = "%s_%s_%04d" % (exp_prefix, timestamp, exp_count)
+            task["exp_name"] = "%s_%s_%04d" % (
+                exp_prefix, timestamp, exp_count)
         if task.get("log_dir", None) is None:
-            task["log_dir"] = config.LOG_DIR + "/local/" + exp_prefix.replace("_", "-") + "/" + task["exp_name"]
-        task["remote_log_dir"] = osp.join(config.AWS_S3_PATH, exp_prefix.replace("_", "-"), task["exp_name"])
+            task["log_dir"] = config.LOG_DIR + "/local/" + \
+                              exp_prefix.replace("_", "-") + "/" + task["exp_name"]
+        if task.get("variant", None) is not None:
+            variant = task.pop("variant")
+            if "exp_name" not in variant:
+                variant["exp_name"] = task["exp_name"]
+            task["variant_data"] = base64.b64encode(pickle.dumps(variant))
+        elif "variant" in task:
+            del task["variant"]
+        task["remote_log_dir"] = osp.join(
+            config.AWS_S3_PATH, exp_prefix.replace("_", "-"), task["exp_name"])
 
     if mode not in ["local", "local_docker"] and not remote_confirmed and not dry and confirm_remote:
         remote_confirmed = query_yes_no(
@@ -341,14 +415,16 @@ def run_experiment_lite(
         for task in batch_tasks:
             del task["remote_log_dir"]
             env = task.pop("env", None)
-            command = to_local_command(task, script=osp.join(config.PROJECT_PATH, script), use_gpu=use_gpu)
+            command = to_local_command(
+                task, script=osp.join(config.PROJECT_PATH, script), use_gpu=use_gpu)
             print(command)
             if dry:
                 return
             try:
                 if env is None:
                     env = dict()
-                subprocess.call(command, shell=True, env=dict(os.environ, **env))
+                subprocess.call(
+                    command, shell=True, env=dict(os.environ, **env))
             except Exception as e:
                 print e
                 if isinstance(e, KeyboardInterrupt):
@@ -359,7 +435,13 @@ def run_experiment_lite(
         for task in batch_tasks:
             del task["remote_log_dir"]
             env = task.pop("env", None)
-            command = to_docker_command(task, docker_image=docker_image, script=script, env=env)
+            command = to_docker_command(
+                task,
+                docker_image=docker_image,
+                script=script,
+                env=env,
+                use_gpu=use_gpu,
+            )
             print(command)
             if dry:
                 return
@@ -380,7 +462,8 @@ def run_experiment_lite(
                    dry=dry,
                    terminate_machine=terminate_machine,
                    use_gpu=use_gpu,
-                   code_full_path=s3_code_path)
+                   code_full_path=s3_code_path,
+                   sync_s3_pkl=sync_s3_pkl)
     elif mode == "lab_kube":
         assert env is None
         # first send code folder to s3
@@ -390,8 +473,10 @@ def run_experiment_lite(
         for task in batch_tasks:
             if 'env' in task:
                 assert task.pop('env') is None
-            task["resources"] = params.pop("resouces", config.KUBE_DEFAULT_RESOURCES)
-            task["node_selector"] = params.pop("node_selector", config.KUBE_DEFAULT_NODE_SELECTOR)
+            task["resources"] = params.pop(
+                "resouces", config.KUBE_DEFAULT_RESOURCES)
+            task["node_selector"] = params.pop(
+                "node_selector", config.KUBE_DEFAULT_NODE_SELECTOR)
             task["exp_prefix"] = exp_prefix
             pod_dict = to_lab_kube_pod(
                 task, code_full_path=s3_code_path, docker_image=docker_image, script=script, is_gpu=use_gpu)
@@ -459,8 +544,8 @@ def _to_param_val(v):
 
 def to_local_command(params, script=osp.join(config.PROJECT_PATH, 'scripts/run_experiment.py'), use_gpu=False):
     command = "python " + script
-    if use_gpu:
-        command = "THEANO_FLAGS='device=gpu' " + command
+    if use_gpu and not config.USE_TF:
+        command = "THEANO_FLAGS='device=gpu,dnn.enabled=auto' " + command
     for k, v in params.iteritems():
         if isinstance(v, dict):
             for nk, nv in v.iteritems():
@@ -496,20 +581,28 @@ def to_docker_command(params, docker_image, script='scripts/run_experiment.py', 
     if env is not None:
         for k, v in env.iteritems():
             command_prefix += " -e \"{k}={v}\"".format(k=k, v=v)
-    command_prefix += " -v {local_log_dir}:{docker_log_dir}".format(local_log_dir=log_dir,
-                                                                    docker_log_dir=docker_log_dir)
+    command_prefix += " -v {local_mujoco_key_dir}:{docker_mujoco_key_dir}".format(
+        local_mujoco_key_dir=config.MUJOCO_KEY_PATH, docker_mujoco_key_dir='/root/.mujoco')
+    command_prefix += " -v {local_log_dir}:{docker_log_dir}".format(
+        local_log_dir=log_dir,
+        docker_log_dir=docker_log_dir
+    )
     if local_code_dir is None:
         local_code_dir = config.PROJECT_PATH
-    command_prefix += " -v {local_code_dir}:{docker_code_dir}".format(local_code_dir=local_code_dir,
-                                                                      docker_code_dir=config.DOCKER_CODE_DIR)
+    command_prefix += " -v {local_code_dir}:{docker_code_dir}".format(
+        local_code_dir=local_code_dir,
+        docker_code_dir=config.DOCKER_CODE_DIR
+    )
     params = dict(params, log_dir=docker_log_dir)
     command_prefix += " -t " + docker_image + " /bin/bash -c "
     command_list = list()
-    # command_list.append('sleep 9999999')
     if pre_commands is not None:
         command_list.extend(pre_commands)
     command_list.append("echo \"Running in docker\"")
-    command_list.append(to_local_command(params, osp.join(config.DOCKER_CODE_DIR, script), use_gpu=use_gpu))
+    command_list.append(to_local_command(
+        params, osp.join(config.DOCKER_CODE_DIR, script), use_gpu=use_gpu))
+    # We for 2 min sleep after termination to allow for last syncs.
+    post_commands = ['sleep 120']
     if post_commands is not None:
         command_list.extend(post_commands)
     return command_prefix + "'" + "; ".join(command_list) + "'"
@@ -522,7 +615,8 @@ def dedent(s):
 
 def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
                script='scripts/run_experiment.py',
-               aws_config=None, dry=False, terminate_machine=True, use_gpu=False):
+               aws_config=None, dry=False, terminate_machine=True, use_gpu=False, sync_s3_pkl=False,
+               periodic_sync=True, periodic_sync_interval=15):
     if len(params_list) == 0:
         return
 
@@ -534,7 +628,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         spot_price=config.AWS_SPOT_PRICE,
         iam_instance_profile_name=config.AWS_IAM_INSTANCE_PROFILE_NAME,
         security_groups=config.AWS_SECURITY_GROUPS,
-
+        security_group_ids=config.AWS_SECURITY_GROUP_IDS,
+        network_interfaces=config.AWS_NETWORK_INTERFACES,
     )
 
     if aws_config is None:
@@ -548,7 +643,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         die() { status=$1; shift; echo "FATAL: $*"; exit $status; }
     """)
     sio.write("""
-        EC2_INSTANCE_ID="`wget -q -O - http://instance-data/latest/meta-data/instance-id`"
+        EC2_INSTANCE_ID="`wget -q -O - http://169.254.169.254/latest/meta-data/instance-id`"
     """)
     sio.write("""
         aws ec2 create-tags --resources $EC2_INSTANCE_ID --tags Key=Name,Value={exp_name} --region {aws_region}
@@ -578,12 +673,23 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         sio.write("""
             mkdir -p {log_dir}
         """.format(log_dir=log_dir))
-        sio.write("""
-            while /bin/true; do
-                aws s3 sync --exclude *.pkl {log_dir} {remote_log_dir} --region {aws_region}
-                sleep 5
-            done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
-                                                 aws_region=config.AWS_REGION_NAME))
+        if periodic_sync:
+            if sync_s3_pkl:
+                sio.write("""
+                    while /bin/true; do
+                        aws s3 sync --exclude '*' --include '*.csv' --include '*.json' --include '*.pkl' {log_dir} {remote_log_dir} --region {aws_region}
+                        sleep {periodic_sync_interval}
+                    done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
+                                                         aws_region=config.AWS_REGION_NAME,
+                                                         periodic_sync_interval=periodic_sync_interval))
+            else:
+                sio.write("""
+                    while /bin/true; do
+                        aws s3 sync --exclude '*' --include '*.csv' --include '*.json' {log_dir} {remote_log_dir} --region {aws_region}
+                        sleep {periodic_sync_interval}
+                    done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
+                                                         aws_region=config.AWS_REGION_NAME,
+                                                         periodic_sync_interval=periodic_sync_interval))
         sio.write("""
             {command}
         """.format(command=to_docker_command(params, docker_image, script, use_gpu=use_gpu, env=env,
@@ -597,7 +703,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
 
     if terminate_machine:
         sio.write("""
-            EC2_INSTANCE_ID="`wget -q -O - http://instance-data/latest/meta-data/instance-id || die \"wget instance-id has failed: $?\"`"
+            EC2_INSTANCE_ID="`wget -q -O - http://169.254.169.254/latest/meta-data/instance-id || die \"wget instance-id has failed: $?\"`"
             aws ec2 terminate-instances --instance-ids $EC2_INSTANCE_ID --region {aws_region}
         """.format(aws_region=config.AWS_REGION_NAME))
     sio.write("} >> /home/ubuntu/user_data.log 2>&1\n")
@@ -643,6 +749,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         InstanceType=aws_config["instance_type"],
         EbsOptimized=True,
         SecurityGroups=aws_config["security_groups"],
+        SecurityGroupIds=aws_config["security_group_ids"],
+        NetworkInterfaces=aws_config["network_interfaces"],
         IamInstanceProfile=dict(
             Name=aws_config["iam_instance_profile_name"],
         ),
@@ -662,7 +770,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             InstanceCount=1,
             LaunchSpecification=instance_args,
             SpotPrice=aws_config["spot_price"],
-            ClientToken=params_list[0]["exp_name"],
+            # ClientToken=params_list[0]["exp_name"],
         )
         import pprint
         pprint.pprint(spot_args)
@@ -675,7 +783,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
                 try:
                     ec2.create_tags(
                         Resources=[spot_request_id],
-                        Tags=[{'Key': 'Name', 'Value': params_list[0]["exp_name"]}],
+                        Tags=[
+                            {'Key': 'Name', 'Value': params_list[0]["exp_name"]}],
                     )
                     break
                 except botocore.exceptions.ClientError:
@@ -721,11 +830,17 @@ def s3_sync_code(config, dry=False):
            [".", full_path]
     caching_cmds = ["aws", "s3", "sync"] + \
                    [full_path, cache_path]
-    print cache_cmds, cmds, caching_cmds
+    mujoco_key_cmd = [
+        "aws", "s3", "sync", config.MUJOCO_KEY_PATH, "{}/.mujoco/".format(base)]
+    print cache_cmds, cmds, caching_cmds, mujoco_key_cmd
     if not dry:
         subprocess.check_call(cache_cmds)
         subprocess.check_call(cmds)
         subprocess.check_call(caching_cmds)
+        try:
+            subprocess.check_call(mujoco_key_cmd)
+        except Exception:
+            print('Unable to sync mujoco keys!')
     S3_CODE_PATH = full_path
     return full_path
 
@@ -736,7 +851,8 @@ def upload_file_to_s3(script_content):
     f = tempfile.NamedTemporaryFile(delete=False)
     f.write(script_content)
     f.close()
-    remote_path = os.path.join(config.AWS_CODE_SYNC_S3_PATH, "oversize_bash_scripts", str(uuid.uuid4()))
+    remote_path = os.path.join(
+        config.AWS_CODE_SYNC_S3_PATH, "oversize_bash_scripts", str(uuid.uuid4()))
     subprocess.check_call(["aws", "s3", "cp", f.name, remote_path])
     os.unlink(f.name)
     return remote_path
@@ -761,12 +877,16 @@ def to_lab_kube_pod(
     mkdir_p(log_dir)
     pre_commands = list()
     pre_commands.append('mkdir -p ~/.aws')
+    pre_commands.append('mkdir ~/.mujoco')
     # fetch credentials from the kubernetes secret file
     pre_commands.append('echo "[default]" >> ~/.aws/credentials')
     pre_commands.append(
         "echo \"aws_access_key_id = %s\" >> ~/.aws/credentials" % config.AWS_ACCESS_KEY)
     pre_commands.append(
         "echo \"aws_secret_access_key = %s\" >> ~/.aws/credentials" % config.AWS_ACCESS_SECRET)
+    s3_mujoco_key_path = config.AWS_CODE_SYNC_S3_PATH + '/.mujoco/'
+    pre_commands.append(
+        'aws s3 cp --recursive {} {}'.format(s3_mujoco_key_path, '~/.mujoco'))
     pre_commands.append('aws s3 cp --recursive %s %s' %
                         (code_full_path, config.DOCKER_CODE_DIR))
     pre_commands.append('cd %s' %
@@ -775,8 +895,8 @@ def to_lab_kube_pod(
                         (log_dir))
     pre_commands.append("""
         while /bin/true; do
-            aws s3 sync --exclude *.pkl {log_dir} {remote_log_dir} --region {aws_region}
-            sleep 5
+            aws s3 sync --exclude '*' --include '*.csv' --include '*.json' {log_dir} {remote_log_dir} --region {aws_region}
+            sleep 15
         done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
                                              aws_region=config.AWS_REGION_NAME))
     # copy the file to s3 after execution
@@ -902,7 +1022,7 @@ def concretize(maybe_stub):
         obj = concretize(maybe_stub.obj)
         attr_name = maybe_stub.attr_name
         attr_val = getattr(obj, attr_name)
-        return attr_val
+        return concretize(attr_val)
     elif isinstance(maybe_stub, StubObject):
         if not hasattr(maybe_stub, "__stub_cache"):
             args = concretize(maybe_stub.args)
