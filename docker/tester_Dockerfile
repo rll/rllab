@@ -1,4 +1,4 @@
-FROM neocxi/rllab:latest
+FROM neocxi/rllab_exp_gpu_tf:py3
 
 ADD . /root/code/rllab
 WORKDIR /root/code/rllab
