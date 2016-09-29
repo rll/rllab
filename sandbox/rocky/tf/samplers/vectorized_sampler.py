@@ -1,5 +1,6 @@
-from __future__ import print_function
-from __future__ import absolute_import
+import pickle
+
+import tensorflow as tf
 from rllab.sampler.base import BaseSampler
 from sandbox.rocky.tf.envs.parallel_vec_env_executor import ParallelVecEnvExecutor
 from sandbox.rocky.tf.envs.vec_env_executor import VecEnvExecutor
@@ -11,14 +12,25 @@ import itertools
 
 
 class VectorizedSampler(BaseSampler):
+
+    def __init__(self, algo, n_envs=None):
+        super(VectorizedSampler, self).__init__(algo)
+        self.n_envs = n_envs
+
     def start_worker(self):
-        estimated_envs = int(self.algo.batch_size / self.algo.max_path_length)
-        estimated_envs = max(1, min(estimated_envs, 100))
-        self.vec_env = VecEnvExecutor(
-            self.algo.env,
-            n=estimated_envs,
-            max_path_length=self.algo.max_path_length
-        )
+        n_envs = self.n_envs
+        if n_envs is None:
+            n_envs = int(self.algo.batch_size / self.algo.max_path_length)
+            n_envs = max(1, min(n_envs, 100))
+
+        if getattr(self.algo.env, 'vectorized', False):
+            self.vec_env = self.algo.env.vec_env_executor(n_envs=n_envs, max_path_length=self.algo.max_path_length)
+        else:
+            envs = [pickle.loads(pickle.dumps(self.algo.env)) for _ in range(n_envs)]
+            self.vec_env = VecEnvExecutor(
+                envs=envs,
+                max_path_length=self.algo.max_path_length
+            )
         self.env_spec = self.algo.env.spec
 
     def shutdown_worker(self):
@@ -36,11 +48,14 @@ class VectorizedSampler(BaseSampler):
         policy_time = 0
         env_time = 0
         process_time = 0
+
+        policy = self.algo.policy
         import time
         while n_samples < self.algo.batch_size:
             t = time.time()
-            self.algo.policy.reset(dones)
-            actions, agent_infos = self.algo.policy.get_actions(obses)
+            policy.reset(dones)
+            actions, agent_infos = policy.get_actions(obses)
+
             policy_time += time.time() - t
             t = time.time()
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions)
@@ -51,9 +66,9 @@ class VectorizedSampler(BaseSampler):
             agent_infos = tensor_utils.split_tensor_dict_list(agent_infos)
             env_infos = tensor_utils.split_tensor_dict_list(env_infos)
             if env_infos is None:
-                env_infos = [dict() for _ in xrange(self.vec_env.num_envs)]
+                env_infos = [dict() for _ in range(self.vec_env.num_envs)]
             if agent_infos is None:
-                agent_infos = [dict() for _ in xrange(self.vec_env.num_envs)]
+                agent_infos = [dict() for _ in range(self.vec_env.num_envs)]
             for idx, observation, action, reward, env_info, agent_info, done in zip(itertools.count(), obses, actions,
                                                                                     rewards, env_infos, agent_infos,
                                                                                     dones):

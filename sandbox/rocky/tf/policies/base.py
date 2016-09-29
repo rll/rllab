@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 
 from sandbox.rocky.tf.core.parameterized import Parameterized
 
@@ -35,6 +35,10 @@ class Policy(Parameterized):
     @property
     def action_space(self):
         return self._env_spec.action_space
+
+    @property
+    def env_spec(self):
+        return self._env_spec
 
     @property
     def recurrent(self):

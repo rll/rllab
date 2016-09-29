@@ -1,6 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
-
 from rllab.spaces.base import Space
 import numpy as np
 from rllab.misc import special
@@ -49,11 +46,15 @@ class Discrete(Space):
         return special.from_onehot_n(x)
 
     @property
+    def default_value(self):
+        return 0
+
+    @property
     def flat_dim(self):
         return self.n
 
     def weighted_sample(self, weights):
-        return special.weighted_sample(weights, xrange(self.n))
+        return special.weighted_sample(weights, range(self.n))
 
     def new_tensor_variable(self, name, extra_dims):
         # needed for safe conversion to float32

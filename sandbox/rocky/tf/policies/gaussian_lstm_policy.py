@@ -23,6 +23,7 @@ class GaussianLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
             learn_std=True,
             init_std=1.0,
             output_nonlinearity=None,
+            lstm_layer_cls=L.LSTMLayer,
     ):
         """
         :param env_spec: A spec for the env.
@@ -72,6 +73,7 @@ class GaussianLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
                 hidden_dim=hidden_dim,
                 hidden_nonlinearity=hidden_nonlinearity,
                 output_nonlinearity=output_nonlinearity,
+                lstm_layer_cls=lstm_layer_cls,
                 name="mean_network"
             )
 
@@ -180,7 +182,7 @@ class GaussianLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
     @overrides
     def get_action(self, observation):
         actions, agent_infos = self.get_actions([observation])
-        return actions[0], {k: v[0] for k, v in agent_infos.iteritems()}
+        return actions[0], {k: v[0] for k, v in agent_infos.items()}
 
     @overrides
     def get_actions(self, observations):

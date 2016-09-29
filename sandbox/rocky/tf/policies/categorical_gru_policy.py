@@ -21,7 +21,9 @@ class CategoricalGRUPolicy(StochasticPolicy, LayersPowered, Serializable):
             hidden_dim=32,
             feature_network=None,
             state_include_action=True,
-            hidden_nonlinearity=tf.tanh):
+            hidden_nonlinearity=tf.tanh,
+            gru_layer_cls=L.GRULayer,
+    ):
         """
         :param env_spec: A spec for the env.
         :param hidden_dim: dimension of hidden layer
@@ -71,6 +73,7 @@ class CategoricalGRUPolicy(StochasticPolicy, LayersPowered, Serializable):
                 hidden_dim=hidden_dim,
                 hidden_nonlinearity=hidden_nonlinearity,
                 output_nonlinearity=tf.nn.softmax,
+                gru_layer_cls=gru_layer_cls,
                 name="prob_network"
             )
 
@@ -159,7 +162,7 @@ class CategoricalGRUPolicy(StochasticPolicy, LayersPowered, Serializable):
     @overrides
     def get_action(self, observation):
         actions, agent_infos = self.get_actions([observation])
-        return actions[0], {k: v[0] for k, v in agent_infos.iteritems()}
+        return actions[0], {k: v[0] for k, v in agent_infos.items()}
 
     @overrides
     def get_actions(self, observations):

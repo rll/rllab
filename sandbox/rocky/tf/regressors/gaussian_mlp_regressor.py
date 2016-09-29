@@ -36,6 +36,7 @@ class GaussianMLPRegressor(LayersPowered, Serializable):
             std_nonlinearity=None,
             normalize_inputs=True,
             normalize_outputs=True,
+            subsample_factor=1.0
     ):
         """
         :param input_shape: Shape of the input data.
@@ -65,6 +66,7 @@ class GaussianMLPRegressor(LayersPowered, Serializable):
                     optimizer = LbfgsOptimizer("optimizer")
 
             self._optimizer = optimizer
+            self._subsample_factor = subsample_factor
 
             if mean_network is None:
                 mean_network = MLP(
@@ -175,6 +177,11 @@ class GaussianMLPRegressor(LayersPowered, Serializable):
             self._y_std_var = y_std_var
 
     def fit(self, xs, ys):
+        if self._subsample_factor < 1:
+            num_samples_tot = xs.shape[0]
+            idx = np.random.randint(0, num_samples_tot, int(num_samples_tot * self._subsample_factor))
+            xs, ys = xs[idx], ys[idx]
+
         sess = tf.get_default_session()
         if self._normalize_inputs:
             # recompute normalizing constants for inputs

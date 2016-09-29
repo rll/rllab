@@ -1,6 +1,4 @@
-from __future__ import print_function
-from __future__ import absolute_import
-
+import time
 from rllab.algos.base import RLAlgorithm
 import rllab.misc.logger as logger
 import rllab.plotter as plotter
@@ -37,6 +35,7 @@ class BatchPolopt(RLAlgorithm):
             fixed_horizon=False,
             sampler_cls=None,
             sampler_args=None,
+            force_batch_sampler=False,
             **kwargs
     ):
         """
@@ -78,7 +77,7 @@ class BatchPolopt(RLAlgorithm):
         self.whole_paths = whole_paths
         self.fixed_horizon = fixed_horizon
         if sampler_cls is None:
-            if self.policy.vectorized:
+            if self.policy.vectorized and not force_batch_sampler:
                 sampler_cls = VectorizedSampler
             else:
                 sampler_cls = BatchSampler
@@ -105,24 +104,32 @@ class BatchPolopt(RLAlgorithm):
         with tf.Session() as sess:
             sess.run(tf.initialize_all_variables())
             self.start_worker()
-            for itr in xrange(self.start_itr, self.n_itr):
+            start_time = time.time()
+            for itr in range(self.start_itr, self.n_itr):
+                itr_start_time = time.time()
                 with logger.prefix('itr #%d | ' % itr):
+                    logger.log("Obtaining samples...")
                     paths = self.obtain_samples(itr)
+                    logger.log("Processing samples...")
                     samples_data = self.process_samples(itr, paths)
+                    logger.log("Logging diagnostics...")
                     self.log_diagnostics(paths)
+                    logger.log("Optimizing policy...")
                     self.optimize_policy(itr, samples_data)
-                    logger.log("saving snapshot...")
+                    logger.log("Saving snapshot...")
                     params = self.get_itr_snapshot(itr, samples_data)  # , **kwargs)
                     if self.store_paths:
                         params["paths"] = samples_data["paths"]
                     logger.save_itr_params(itr, params)
-                    logger.log("saved")
+                    logger.log("Saved")
+                    logger.record_tabular('Time', time.time() - start_time)
+                    logger.record_tabular('ItrTime', time.time() - itr_start_time)
                     logger.dump_tabular(with_prefix=False)
                     if self.plot:
                         self.update_plot()
                         if self.pause_for_plot:
-                            raw_input("Plotting evaluation run: Press Enter to "
-                                      "continue...")
+                            input("Plotting evaluation run: Press Enter to "
+                                  "continue...")
         self.shutdown_worker()
 
     def log_diagnostics(self, paths):

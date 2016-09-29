@@ -81,7 +81,7 @@ class CategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
     def get_actions(self, observations):
         flat_obs = self.observation_space.flatten_n(observations)
         probs = self._f_prob(flat_obs)
-        actions = map(self.action_space.weighted_sample, probs)
+        actions = list(map(self.action_space.weighted_sample, probs))
         return actions, dict(prob=probs)
 
     @property

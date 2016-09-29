@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 
 import sandbox.rocky.tf.core.layers as L
 import numpy as np

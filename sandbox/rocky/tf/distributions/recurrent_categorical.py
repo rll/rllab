@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
 import tensorflow as tf
 import numpy as np
 from sandbox.rocky.tf.distributions.categorical import Categorical
@@ -55,6 +53,10 @@ class RecurrentCategorical(Distribution):
     def entropy(self, dist_info):
         probs = dist_info["prob"]
         return -np.sum(probs * np.log(probs + TINY), axis=2)
+
+    def entropy_sym(self, dist_info_vars):
+        probs = dist_info_vars["prob"]
+        return -tf.reduce_sum(probs * tf.log(probs + TINY), 2)
 
     def log_likelihood_sym(self, xs, dist_info_vars):
         probs = dist_info_vars["prob"]

@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 
 from rllab.core.serializable import Serializable
 from rllab.misc.tensor_utils import flatten_tensors, unflatten_tensors
@@ -25,13 +25,13 @@ class Parameterized(object):
         Get the list of parameters, filtered by the provided tags.
         Some common tags include 'regularizable' and 'trainable'
         """
-        tag_tuple = tuple(sorted(tags.items(), key=lambda x: x[0]))
+        tag_tuple = tuple(sorted(list(tags.items()), key=lambda x: x[0]))
         if tag_tuple not in self._cached_params:
             self._cached_params[tag_tuple] = self.get_params_internal(**tags)
         return self._cached_params[tag_tuple]
 
     def get_param_dtypes(self, **tags):
-        tag_tuple = tuple(sorted(tags.items(), key=lambda x: x[0]))
+        tag_tuple = tuple(sorted(list(tags.items()), key=lambda x: x[0]))
         if tag_tuple not in self._cached_param_dtypes:
             params = self.get_params(**tags)
             param_values = tf.get_default_session().run(params)
@@ -39,7 +39,7 @@ class Parameterized(object):
         return self._cached_param_dtypes[tag_tuple]
 
     def get_param_shapes(self, **tags):
-        tag_tuple = tuple(sorted(tags.items(), key=lambda x: x[0]))
+        tag_tuple = tuple(sorted(list(tags.items()), key=lambda x: x[0]))
         if tag_tuple not in self._cached_param_shapes:
             params = self.get_params(**tags)
             param_values = tf.get_default_session().run(params)
@@ -48,7 +48,6 @@ class Parameterized(object):
 
     def get_param_values(self, **tags):
         params = self.get_params(**tags)
-        # import ipdb; ipdb.set_trace()
         param_values = tf.get_default_session().run(params)
         return flatten_tensors(param_values)
 

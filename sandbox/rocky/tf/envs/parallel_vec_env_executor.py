@@ -1,7 +1,7 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 import numpy as np
-import cPickle as pickle
+import pickle as pickle
 from sandbox.rocky.tf.misc import tensor_utils
 from rllab.misc import logger
 
@@ -28,7 +28,7 @@ def worker_run_reset(G, flags, scope):
             logger.log(line)
         # log the stacktrace at least
         logger.log("oops")
-        for k, v in G.__dict__.iteritems():
+        for k, v in G.__dict__.items():
             logger.log(str(k) + " : " + str(v))
         assert hasattr(G, 'parallel_vec_envs')
 
@@ -63,7 +63,7 @@ def worker_run_step(G, action_n, scope):
         step_results.append(tuple(env.step(action)))
     if len(step_results) == 0:
         return None
-    obs, rewards, dones, env_infos = map(list, zip(*step_results))
+    obs, rewards, dones, env_infos = list(map(list, list(zip(*step_results))))
     obs = env_template.observation_space.flatten_n(obs)
     rewards = np.asarray(rewards)
     dones = np.asarray(dones)
@@ -87,7 +87,7 @@ class ParallelVecEnvExecutor(object):
         start_id = 0
         for _ in range(singleton_pool.n_parallel):
             n_allocs = min(envs_per_worker, rest_alloc)
-            alloc_env_ids.append(range(start_id, start_id + n_allocs))
+            alloc_env_ids.append(list(range(start_id, start_id + n_allocs)))
             start_id += n_allocs
             rest_alloc = max(0, rest_alloc - envs_per_worker)
 
@@ -107,19 +107,19 @@ class ParallelVecEnvExecutor(object):
             [(action_n, self.scope) for _ in self._alloc_env_ids],
         )
         results = [x for x in results if x is not None]
-        ids, obs, rewards, dones, env_infos = zip(*results)
+        ids, obs, rewards, dones, env_infos = list(zip(*results))
         ids = np.concatenate(ids)
         obs = self.observation_space.unflatten_n(np.concatenate(obs))
         rewards = np.concatenate(rewards)
         dones = np.concatenate(dones)
         env_infos = tensor_utils.split_tensor_dict_list(tensor_utils.concat_tensor_dict_list(env_infos))
         if env_infos is None:
-            env_infos = [dict() for _ in xrange(self.num_envs)]
+            env_infos = [dict() for _ in range(self.num_envs)]
 
-        items = zip(ids, obs, rewards, dones, env_infos)
+        items = list(zip(ids, obs, rewards, dones, env_infos))
         items = sorted(items, key=lambda x: x[0])
 
-        ids, obs, rewards, dones, env_infos = zip(*items)
+        ids, obs, rewards, dones, env_infos = list(zip(*items))
 
         obs = list(obs)
         rewards = np.asarray(rewards)
@@ -141,8 +141,8 @@ class ParallelVecEnvExecutor(object):
             worker_run_reset,
             [(dones, self.scope) for _ in self._alloc_env_ids],
         )
-        ids, flat_obs = map(np.concatenate, zip(*results))
-        zipped = zip(ids, flat_obs)
+        ids, flat_obs = list(map(np.concatenate, list(zip(*results))))
+        zipped = list(zip(ids, flat_obs))
         sorted_obs = np.asarray([x[1] for x in sorted(zipped, key=lambda x: x[0])])
 
         done_ids, = np.where(dones)
