@@ -1,4 +1,6 @@
 FROM neocxi/rllab_exp_gpu_tf:py3
 
+RUN /opt/conda/envs/rllab3/bin/conda install nomkl
+
 ADD . /root/code/rllab
 WORKDIR /root/code/rllab
