@@ -49,6 +49,11 @@ DOCKER_CODE_DIR = "/root/code/rllab"
 
 AWS_CODE_SYNC_S3_PATH = "s3://to/be/overriden/in/personal"
 
+# whether to use fast code sync
+FAST_CODE_SYNC = True
+
+FAST_CODE_SYNC_IGNORES = [".git", "data", ".pods"]
+
 KUBE_DEFAULT_RESOURCES = {
     "requests": {
         "cpu": 0.8,
@@ -61,16 +66,18 @@ KUBE_DEFAULT_NODE_SELECTOR = {
 
 MUJOCO_KEY_PATH = osp.expanduser("~/.mujoco")
 
+ENV = {}
+
 if osp.exists(osp.join(osp.dirname(__file__), "config_personal.py")):
-    from config_personal import *
+    from .config_personal import *
 else:
-    print "Creating your personal config from template..."
+    print("Creating your personal config from template...")
     from shutil import copy
     copy(osp.join(PROJECT_PATH, "rllab/config_personal_template.py"), osp.join(PROJECT_PATH, "rllab/config_personal.py"))
-    from config_personal import *
-    print "Personal config created, but you should probably edit it before further experiments " \
-          "are run"
+    from .config_personal import *
+    print("Personal config created, but you should probably edit it before further experiments " \
+          "are run")
     if 'CIRCLECI' not in os.environ:
-        print "Exiting."
+        print("Exiting.")
         import sys; sys.exit(0)
 

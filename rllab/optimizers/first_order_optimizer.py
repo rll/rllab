@@ -6,6 +6,8 @@ from rllab.optimizers.minibatch_dataset import BatchDataset
 from collections import OrderedDict
 import time
 import lasagne.updates
+import theano
+import pyprind
 from functools import partial
 
 
@@ -45,7 +47,7 @@ class FirstOrderOptimizer(Serializable):
         self._batch_size = batch_size
         self._verbose = verbose
 
-    def update_opt(self, loss, target, inputs, extra_inputs=None, **kwargs):
+    def update_opt(self, loss, target, inputs, extra_inputs=None, gradients=None, **kwargs):
         """
         :param loss: Symbolic expression for the loss function.
         :param target: A parameterized object to optimize over. It should implement methods of the
@@ -57,8 +59,10 @@ class FirstOrderOptimizer(Serializable):
 
         self._target = target
 
-        updates = self._update_method(loss, target.get_params(trainable=True))
-        updates = OrderedDict([(k, v.astype(k.dtype)) for k, v in updates.iteritems()])
+        if gradients is None:
+            gradients = theano.grad(loss, target.get_params(trainable=True), disconnected_inputs='ignore')
+        updates = self._update_method(gradients, target.get_params(trainable=True))
+        updates = OrderedDict([(k, v.astype(k.dtype)) for k, v in updates.items()])
 
         if extra_inputs is None:
             extra_inputs = list()
@@ -77,7 +81,7 @@ class FirstOrderOptimizer(Serializable):
             extra_inputs = tuple()
         return self._opt_fun["f_loss"](*(tuple(inputs) + extra_inputs))
 
-    def optimize(self, inputs, extra_inputs=None, callback=None):
+    def optimize_gen(self, inputs, extra_inputs=None, callback=None, yield_itr=None):
 
         if len(inputs) == 0:
             # Assumes that we should always sample mini-batches
@@ -93,15 +97,23 @@ class FirstOrderOptimizer(Serializable):
 
         start_time = time.time()
 
-        dataset = BatchDataset(inputs, self._batch_size, extra_inputs=extra_inputs)
+        dataset = BatchDataset(
+            inputs, self._batch_size,
+            extra_inputs=extra_inputs
+            #, randomized=self._randomized
+        )
 
-        for epoch in xrange(self._max_epochs):
-            if self._verbose:
-                logger.log("Epoch %d" % epoch)
+        itr = 0
+        for epoch in pyprind.prog_bar(list(range(self._max_epochs))):
             for batch in dataset.iterate(update=True):
                 f_opt(*batch)
+                if yield_itr is not None and (itr % (yield_itr+1)) == 0:
+                    yield
+                itr += 1
 
             new_loss = f_loss(*(tuple(inputs) + extra_inputs))
+            if self._verbose:
+                logger.log("Epoch %d, loss %s" % (epoch, new_loss))
 
             if self._callback or callback:
                 elapsed = time.time() - start_time
@@ -119,3 +131,7 @@ class FirstOrderOptimizer(Serializable):
             if abs(last_loss - new_loss) < self._tolerance:
                 break
             last_loss = new_loss
+
+    def optimize(self, inputs, **kwargs):
+        for _ in self.optimize_gen(inputs, **kwargs):
+            pass

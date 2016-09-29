@@ -3,8 +3,9 @@ import re
 import subprocess
 import base64
 import os.path as osp
-import cPickle as pickle
+import pickle as pickle
 import inspect
+import hashlib
 import sys
 from contextlib import contextmanager
 
@@ -14,14 +15,16 @@ from rllab.core.serializable import Serializable
 from rllab import config
 from rllab.misc.console import mkdir_p
 from rllab.misc import ext
-from StringIO import StringIO
+from io import StringIO
 import datetime
 import dateutil.tz
 import json
+import time
 import numpy as np
 
 from rllab.misc.ext import AttrDict
 from rllab.viskit.core import flatten
+import collections
 
 
 class StubBase(object):
@@ -109,7 +112,7 @@ class StubClass(StubBase):
         if len(args) > 0:
             # Convert the positional arguments to keyword arguments
             spec = inspect.getargspec(self.proxy_class.__init__)
-            kwargs = dict(zip(spec.args[1:], args), **kwargs)
+            kwargs = dict(list(zip(spec.args[1:], args)), **kwargs)
             args = tuple()
         return StubObject(self.proxy_class, *args, **kwargs)
 
@@ -132,7 +135,7 @@ class StubObject(StubBase):
     def __init__(self, __proxy_class, *args, **kwargs):
         if len(args) > 0:
             spec = inspect.getargspec(__proxy_class.__init__)
-            kwargs = dict(zip(spec.args[1:], args), **kwargs)
+            kwargs = dict(list(zip(spec.args[1:], args)), **kwargs)
             args = tuple()
         self.proxy_class = __proxy_class
         self.args = args
@@ -164,7 +167,7 @@ class VariantDict(AttrDict):
         self._hidden_keys = hidden_keys
 
     def dump(self):
-        return {k: v for k, v in self.iteritems() if k not in self._hidden_keys}
+        return {k: v for k, v in self.items() if k not in self._hidden_keys}
 
 
 class VariantGenerator(object):
@@ -196,7 +199,7 @@ class VariantGenerator(object):
 
     def _populate_variants(self):
         methods = inspect.getmembers(
-            self.__class__, predicate=inspect.ismethod)
+            self.__class__, predicate=lambda x: inspect.isfunction(x) or inspect.ismethod(x))
         methods = [x[1].__get__(self, self.__class__)
                    for x in methods if getattr(x[1], '__is_variant', False)]
         for m in methods:
@@ -206,7 +209,7 @@ class VariantGenerator(object):
         ret = list(self.ivariants())
         if randomized:
             np.random.shuffle(ret)
-        return map(self.variant_dict, ret)
+        return list(map(self.variant_dict, ret))
 
     def variant_dict(self, variant):
         return VariantDict(variant, self._hidden_keys)
@@ -223,7 +226,7 @@ class VariantGenerator(object):
         for key, vals, _ in self._variants:
             if hasattr(vals, "__call__"):
                 args = inspect.getargspec(vals).args
-                if hasattr(vals, 'im_self'):
+                if hasattr(vals, 'im_self') or hasattr(vals, "__self__"):
                     # remove the first 'self' parameter
                     args = args[1:]
                 dependencies.append((key, set(args)))
@@ -258,7 +261,7 @@ class VariantGenerator(object):
             last_vals = [v for k, v, _ in self._variants if k == last_key][0]
             if hasattr(last_vals, "__call__"):
                 last_val_keys = inspect.getargspec(last_vals).args
-                if hasattr(last_vals, 'im_self'):
+                if hasattr(last_vals, 'im_self') or hasattr(last_vals, '__self__'):
                     last_val_keys = last_val_keys[1:]
             else:
                 last_val_keys = None
@@ -279,7 +282,7 @@ def variant(*args, **kwargs):
         fn.__variant_config = kwargs
         return fn
 
-    if len(args) == 1 and callable(args[0]):
+    if len(args) == 1 and isinstance(args[0], collections.Callable):
         return _variant(args[0])
     return _variant
 
@@ -287,7 +290,7 @@ def variant(*args, **kwargs):
 def stub(glbs):
     # replace the __init__ method in all classes
     # hacky!!!
-    for k, v in glbs.items():
+    for k, v in list(glbs.items()):
         # look at all variables that are instances of a class (not yet Stub)
         if isinstance(v, type) and v != StubClass:
             glbs[k] = StubClass(v)  # and replaces them by a the same but Stub
@@ -316,7 +319,7 @@ def query_yes_no(question, default="yes"):
 
     while True:
         sys.stdout.write(question + prompt)
-        choice = raw_input().lower()
+        choice = input().lower()
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:
@@ -339,6 +342,7 @@ def run_experiment_lite(
         exp_name=None,
         log_dir=None,
         script="scripts/run_experiment_lite.py",
+        python_command="python",
         mode="local",
         dry=False,
         docker_image=None,
@@ -347,8 +351,13 @@ def run_experiment_lite(
         variant=None,
         use_gpu=False,
         sync_s3_pkl=False,
+        sync_log_on_termination=True,
         confirm_remote=True,
         terminate_machine=True,
+        periodic_sync=True,
+        periodic_sync_interval=15,
+        sync_all_data_node_to_s3=True,
+        use_cloudpickle=False,
         **kwargs):
     """
     Serialize the stubbed method call and run the experiment using the specified mode.
@@ -363,6 +372,15 @@ def run_experiment_lite(
     :param env: extra environment variables
     :param kwargs: All other parameters will be passed directly to the entrance python script.
     :param variant: If provided, should be a dictionary of parameters
+    :param use_gpu: Whether the launched task is running on GPU. This triggers a few configuration changes including
+    certain environment flags
+    :param sync_s3_pkl: Whether to sync pkl files during execution of the experiment (they will always be synced at
+    the end of the experiment)
+    :param confirm_remote: Whether to confirm before launching experiments remotely
+    :param terminate_machine: Whether to terminate machine after experiment finishes. Only used when using
+    mode="ec2". This is useful when one wants to debug after an experiment finishes abnormally.
+    :param periodic_sync: Whether to synchronize certain experiment files periodically during execution.
+    :param periodic_sync_interval: Time interval between each periodic sync, in seconds.
     """
     assert stub_method_call is not None or batch_tasks is not None, "Must provide at least either stub_method_call or batch_tasks"
     if batch_tasks is None:
@@ -373,7 +391,8 @@ def run_experiment_lite(
                 exp_name=exp_name,
                 log_dir=log_dir,
                 env=env,
-                variant=variant
+                variant=variant,
+                use_cloudpickle=use_cloudpickle
             )
         ]
 
@@ -385,7 +404,11 @@ def run_experiment_lite(
 
     for task in batch_tasks:
         call = task.pop("stub_method_call")
-        data = base64.b64encode(pickle.dumps(call))
+        if use_cloudpickle:
+            import cloudpickle
+            data = base64.b64encode(cloudpickle.dumps(call)).decode("utf-8")
+        else:
+            data = base64.b64encode(pickle.dumps(call)).decode("utf-8")
         task["args_data"] = data
         exp_count += 1
         params = dict(kwargs)
@@ -399,7 +422,7 @@ def run_experiment_lite(
             variant = task.pop("variant")
             if "exp_name" not in variant:
                 variant["exp_name"] = task["exp_name"]
-            task["variant_data"] = base64.b64encode(pickle.dumps(variant))
+            task["variant_data"] = base64.b64encode(pickle.dumps(variant)).decode("utf-8")
         elif "variant" in task:
             del task["variant"]
         task["remote_log_dir"] = osp.join(
@@ -416,7 +439,7 @@ def run_experiment_lite(
             del task["remote_log_dir"]
             env = task.pop("env", None)
             command = to_local_command(
-                task, script=osp.join(config.PROJECT_PATH, script), use_gpu=use_gpu)
+                task, python_command=python_command, script=osp.join(config.PROJECT_PATH, script), use_gpu=use_gpu)
             print(command)
             if dry:
                 return
@@ -426,7 +449,7 @@ def run_experiment_lite(
                 subprocess.call(
                     command, shell=True, env=dict(os.environ, **env))
             except Exception as e:
-                print e
+                print(e)
                 if isinstance(e, KeyboardInterrupt):
                     raise
     elif mode == "local_docker":
@@ -445,11 +468,17 @@ def run_experiment_lite(
             print(command)
             if dry:
                 return
+            p = subprocess.Popen(command, shell=True)
             try:
-                subprocess.call(command, shell=True)
-            except Exception as e:
-                if isinstance(e, KeyboardInterrupt):
-                    raise
+                p.wait()
+            except KeyboardInterrupt:
+                try:
+                    print("terminating")
+                    p.terminate()
+                except OSError:
+                    print("os error!")
+                    pass
+                p.wait()
     elif mode == "ec2":
         if docker_image is None:
             docker_image = config.DOCKER_IMAGE
@@ -457,29 +486,39 @@ def run_experiment_lite(
         launch_ec2(batch_tasks,
                    exp_prefix=exp_prefix,
                    docker_image=docker_image,
+                   python_command=python_command,
                    script=script,
                    aws_config=aws_config,
                    dry=dry,
                    terminate_machine=terminate_machine,
                    use_gpu=use_gpu,
                    code_full_path=s3_code_path,
-                   sync_s3_pkl=sync_s3_pkl)
+                   sync_s3_pkl=sync_s3_pkl,
+                   sync_log_on_termination=sync_log_on_termination,
+                   periodic_sync=periodic_sync,
+                   periodic_sync_interval=periodic_sync_interval)
     elif mode == "lab_kube":
-        assert env is None
+        # assert env is None
         # first send code folder to s3
         s3_code_path = s3_sync_code(config, dry=dry)
         if docker_image is None:
             docker_image = config.DOCKER_IMAGE
         for task in batch_tasks:
-            if 'env' in task:
-                assert task.pop('env') is None
+            # if 'env' in task:
+            #     assert task.pop('env') is None
+            # TODO: dangerous when there are multiple tasks?
             task["resources"] = params.pop(
-                "resouces", config.KUBE_DEFAULT_RESOURCES)
+                "resources", config.KUBE_DEFAULT_RESOURCES)
             task["node_selector"] = params.pop(
                 "node_selector", config.KUBE_DEFAULT_NODE_SELECTOR)
             task["exp_prefix"] = exp_prefix
             pod_dict = to_lab_kube_pod(
-                task, code_full_path=s3_code_path, docker_image=docker_image, script=script, is_gpu=use_gpu)
+                task, code_full_path=s3_code_path, docker_image=docker_image, script=script, is_gpu=use_gpu,
+                python_command=python_command,
+                sync_s3_pkl=sync_s3_pkl, periodic_sync=periodic_sync, periodic_sync_interval=periodic_sync_interval,
+                sync_all_data_node_to_s3=sync_all_data_node_to_s3,
+                terminate_machine=terminate_machine,
+            )
             pod_str = json.dumps(pod_dict, indent=1)
             if dry:
                 print(pod_str)
@@ -496,11 +535,20 @@ def run_experiment_lite(
             print(kubecmd)
             if dry:
                 return
-            try:
-                subprocess.call(kubecmd, shell=True)
-            except Exception as e:
-                if isinstance(e, KeyboardInterrupt):
-                    raise
+            retry_count = 0
+            wait_interval = 1
+            while retry_count <= 5:
+                try:
+                    return_code = subprocess.call(kubecmd, shell=True)
+                    if return_code == 0:
+                        break
+                    retry_count += 1
+                    print("trying again...")
+                    time.sleep(wait_interval)
+                except Exception as e:
+                    if isinstance(e, KeyboardInterrupt):
+                        raise
+                    print(e)
     else:
         raise NotImplementedError
 
@@ -514,7 +562,7 @@ def ensure_dir(dirname):
     """
     try:
         os.makedirs(dirname)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.EEXIST:
             raise
 
@@ -537,18 +585,23 @@ def _to_param_val(v):
     if v is None:
         return ""
     elif isinstance(v, list):
-        return " ".join(map(_shellquote, map(str, v)))
+        return " ".join(map(_shellquote, list(map(str, v))))
     else:
         return _shellquote(str(v))
 
 
-def to_local_command(params, script=osp.join(config.PROJECT_PATH, 'scripts/run_experiment.py'), use_gpu=False):
-    command = "python " + script
+def to_local_command(params, python_command="python", script=osp.join(config.PROJECT_PATH,
+                                                                      'scripts/run_experiment.py'),
+                     use_gpu=False):
+    command = python_command + " " + script
     if use_gpu and not config.USE_TF:
         command = "THEANO_FLAGS='device=gpu,dnn.enabled=auto' " + command
-    for k, v in params.iteritems():
+    for k, v in config.ENV.items():
+        command = ("%s=%s " % (k, v)) + command
+
+    for k, v in params.items():
         if isinstance(v, dict):
-            for nk, nv in v.iteritems():
+            for nk, nv in v.items():
                 if str(nk) == "_name":
                     command += "  --%s %s" % (k, _to_param_val(nv))
                 else:
@@ -559,7 +612,8 @@ def to_local_command(params, script=osp.join(config.PROJECT_PATH, 'scripts/run_e
     return command
 
 
-def to_docker_command(params, docker_image, script='scripts/run_experiment.py', pre_commands=None,
+def to_docker_command(params, docker_image, python_command="python", script='scripts/run_experiment.py',
+                      pre_commands=None,
                       post_commands=None, dry=False, use_gpu=False, env=None, local_code_dir=None):
     """
     :param params: The parameters for the experiment. If logging directory parameters are provided, we will create
@@ -579,7 +633,7 @@ def to_docker_command(params, docker_image, script='scripts/run_experiment.py', 
         command_prefix = "docker run"
     docker_log_dir = config.DOCKER_LOG_DIR
     if env is not None:
-        for k, v in env.iteritems():
+        for k, v in env.items():
             command_prefix += " -e \"{k}={v}\"".format(k=k, v=v)
     command_prefix += " -v {local_mujoco_key_dir}:{docker_mujoco_key_dir}".format(
         local_mujoco_key_dir=config.MUJOCO_KEY_PATH, docker_mujoco_key_dir='/root/.mujoco')
@@ -594,17 +648,17 @@ def to_docker_command(params, docker_image, script='scripts/run_experiment.py', 
         docker_code_dir=config.DOCKER_CODE_DIR
     )
     params = dict(params, log_dir=docker_log_dir)
-    command_prefix += " -t " + docker_image + " /bin/bash -c "
+    command_prefix += " -ti " + docker_image + " /bin/bash -c "
     command_list = list()
     if pre_commands is not None:
         command_list.extend(pre_commands)
     command_list.append("echo \"Running in docker\"")
     command_list.append(to_local_command(
-        params, osp.join(config.DOCKER_CODE_DIR, script), use_gpu=use_gpu))
+        params, python_command=python_command, script=osp.join(config.DOCKER_CODE_DIR, script), use_gpu=use_gpu))
     # We for 2 min sleep after termination to allow for last syncs.
-    post_commands = ['sleep 120']
-    if post_commands is not None:
-        command_list.extend(post_commands)
+    if post_commands is None:
+        post_commands = ['sleep 120']
+    command_list.extend(post_commands)
     return command_prefix + "'" + "; ".join(command_list) + "'"
 
 
@@ -614,8 +668,10 @@ def dedent(s):
 
 
 def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
+               python_command="python",
                script='scripts/run_experiment.py',
                aws_config=None, dry=False, terminate_machine=True, use_gpu=False, sync_s3_pkl=False,
+               sync_log_on_termination=True,
                periodic_sync=True, periodic_sync_interval=15):
     if len(params_list) == 0:
         return
@@ -654,10 +710,24 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
     sio.write("""
         docker --config /home/ubuntu/.docker pull {docker_image}
     """.format(docker_image=docker_image))
-    sio.write("""
-        aws s3 cp --recursive {code_full_path} {local_code_path} --region {aws_region}
-    """.format(code_full_path=code_full_path, local_code_path=config.DOCKER_CODE_DIR,
-               aws_region=config.AWS_REGION_NAME))
+    if config.FAST_CODE_SYNC:
+        sio.write("""
+            aws s3 cp {code_full_path} /tmp/rllab_code.tar.gz --region {aws_region}
+        """.format(code_full_path=code_full_path, local_code_path=config.DOCKER_CODE_DIR,
+                   aws_region=config.AWS_REGION_NAME))
+        sio.write("""
+            mkdir -p {local_code_path}
+        """.format(code_full_path=code_full_path, local_code_path=config.DOCKER_CODE_DIR,
+                   aws_region=config.AWS_REGION_NAME))
+        sio.write("""
+            tar -zxvf /tmp/rllab_code.tar.gz -C {local_code_path}
+        """.format(code_full_path=code_full_path, local_code_path=config.DOCKER_CODE_DIR,
+                   aws_region=config.AWS_REGION_NAME))
+    else:
+        sio.write("""
+            aws s3 cp --recursive {code_full_path} {local_code_path} --region {aws_region}
+        """.format(code_full_path=code_full_path, local_code_path=config.DOCKER_CODE_DIR,
+                   aws_region=config.AWS_REGION_NAME))
     sio.write("""
         cd {local_code_path}
     """.format(local_code_path=config.DOCKER_CODE_DIR))
@@ -690,9 +760,25 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
                     done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
                                                          aws_region=config.AWS_REGION_NAME,
                                                          periodic_sync_interval=periodic_sync_interval))
+            if sync_log_on_termination:
+                sio.write("""
+                    while /bin/true; do
+                        if [ -z $(curl -Is http://169.254.169.254/latest/meta-data/spot/termination-time | head -1 | grep 404 | cut -d \  -f 2) ]
+                          then
+                            logger "Running shutdown hook."
+                            aws s3 cp /home/ubuntu/user_data.log {remote_log_dir}/stdout.log --region {aws_region}
+                            aws s3 cp --recursive {log_dir} {remote_log_dir} --region {aws_region}
+                            break
+                          else
+                            # Spot instance not yet marked for termination.
+                            sleep 5
+                        fi
+                    done & echo log sync initiated
+                """.format(log_dir=log_dir, remote_log_dir=remote_log_dir, aws_region=config.AWS_REGION_NAME))
         sio.write("""
             {command}
-        """.format(command=to_docker_command(params, docker_image, script, use_gpu=use_gpu, env=env,
+        """.format(command=to_docker_command(params, docker_image, python_command=python_command, script=script,
+                                             use_gpu=use_gpu, env=env,
                                              local_code_dir=config.DOCKER_CODE_DIR)))
         sio.write("""
             aws s3 cp --recursive {log_dir} {remote_log_dir} --region {aws_region}
@@ -727,7 +813,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             aws_secret_access_key=config.AWS_ACCESS_SECRET,
         )
 
-    if len(full_script) > 10000 or len(base64.b64encode(full_script)) > 10000:
+    if len(full_script) > 10000 or len(base64.b64encode(full_script.encode()).decode("utf-8")) > 10000:
         # Script too long; need to upload script to s3 first.
         # We're being conservative here since the actual limit is 16384 bytes
         s3_path = upload_file_to_s3(full_script)
@@ -760,11 +846,11 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
     if not aws_config["spot"]:
         instance_args["MinCount"] = 1
         instance_args["MaxCount"] = 1
-    print "************************************************************"
-    print instance_args["UserData"]
-    print "************************************************************"
+    print("************************************************************")
+    print(instance_args["UserData"])
+    print("************************************************************")
     if aws_config["spot"]:
-        instance_args["UserData"] = base64.b64encode(instance_args["UserData"])
+        instance_args["UserData"] = base64.b64encode(instance_args["UserData"].encode()).decode("utf-8")
         spot_args = dict(
             DryRun=dry,
             InstanceCount=1,
@@ -776,7 +862,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         pprint.pprint(spot_args)
         if not dry:
             response = ec2.request_spot_instances(**spot_args)
-            print response
+            print(response)
             spot_request_id = response['SpotInstanceRequests'][
                 0]['SpotInstanceRequestId']
             for _ in range(10):
@@ -784,7 +870,8 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
                     ec2.create_tags(
                         Resources=[spot_request_id],
                         Tags=[
-                            {'Key': 'Name', 'Value': params_list[0]["exp_name"]}],
+                            {'Key': 'Name', 'Value': params_list[0]["exp_name"]}
+                        ],
                     )
                     break
                 except botocore.exceptions.ClientError:
@@ -807,42 +894,78 @@ def s3_sync_code(config, dry=False):
         return S3_CODE_PATH
     base = config.AWS_CODE_SYNC_S3_PATH
     has_git = True
-    try:
-        current_commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"]).strip()
-        clean_state = len(
-            subprocess.check_output(["git", "status", "--porcelain"])) == 0
-    except subprocess.CalledProcessError as _:
-        print "Warning: failed to execute git commands"
-        has_git = False
-    dir_hash = base64.b64encode(subprocess.check_output(["pwd"]))
-    code_path = "%s_%s" % (
-        dir_hash,
-        (current_commit if clean_state else "%s_dirty_%s" % (current_commit, timestamp)) if
-        has_git else timestamp
-    )
-    full_path = "%s/%s" % (base, code_path)
-    cache_path = "%s/%s" % (base, dir_hash)
-    cache_cmds = ["aws", "s3", "sync"] + \
-                 [cache_path, full_path]
-    cmds = ["aws", "s3", "sync"] + \
-           flatten(["--exclude", "%s" % pattern] for pattern in config.CODE_SYNC_IGNORES) + \
-           [".", full_path]
-    caching_cmds = ["aws", "s3", "sync"] + \
-                   [full_path, cache_path]
-    mujoco_key_cmd = [
-        "aws", "s3", "sync", config.MUJOCO_KEY_PATH, "{}/.mujoco/".format(base)]
-    print cache_cmds, cmds, caching_cmds, mujoco_key_cmd
-    if not dry:
-        subprocess.check_call(cache_cmds)
-        subprocess.check_call(cmds)
-        subprocess.check_call(caching_cmds)
+
+    if config.FAST_CODE_SYNC:
         try:
-            subprocess.check_call(mujoco_key_cmd)
-        except Exception:
-            print('Unable to sync mujoco keys!')
-    S3_CODE_PATH = full_path
-    return full_path
+            current_commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"]).strip().decode("utf-8")
+        except subprocess.CalledProcessError as _:
+            print("Warning: failed to execute git commands")
+            current_commit = None
+
+        file_name = str(timestamp) + "_" + hashlib.sha224(
+            subprocess.check_output(["pwd"]) + str(current_commit).encode() + str(timestamp).encode()
+        ).hexdigest() + ".tar.gz"
+
+        file_path = "/tmp/" + file_name
+
+        tar_cmd = ["tar", "-zcvf", file_path, "-C", config.PROJECT_PATH]
+        for pattern in config.FAST_CODE_SYNC_IGNORES:
+            tar_cmd += ["--exclude", pattern]
+        tar_cmd += ["-h", "."]
+
+        remote_path = "%s/%s" % (base, file_name)
+
+        upload_cmd = ["aws", "s3", "cp", file_path, remote_path]
+
+        print(" ".join(tar_cmd))
+        print(" ".join(upload_cmd))
+
+        if not dry:
+            subprocess.check_call(tar_cmd)
+            subprocess.check_call(upload_cmd)
+
+        S3_CODE_PATH = remote_path
+        return remote_path
+    else:
+        try:
+            current_commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"]).strip().decode("utf-8")
+            clean_state = len(
+                subprocess.check_output(["git", "status", "--porcelain"])) == 0
+        except subprocess.CalledProcessError as _:
+            print("Warning: failed to execute git commands")
+            has_git = False
+        dir_hash = base64.b64encode(subprocess.check_output(["pwd"])).decode("utf-8")
+        code_path = "%s_%s" % (
+            dir_hash,
+            (current_commit if clean_state else "%s_dirty_%s" % (current_commit, timestamp)) if
+            has_git else timestamp
+        )
+        full_path = "%s/%s" % (base, code_path)
+        cache_path = "%s/%s" % (base, dir_hash)
+        cache_cmds = ["aws", "s3", "cp", "--recursive"] + \
+                     flatten(["--exclude", "%s" % pattern] for pattern in config.CODE_SYNC_IGNORES) + \
+                     [cache_path, full_path]
+        cmds = ["aws", "s3", "cp", "--recursive"] + \
+               flatten(["--exclude", "%s" % pattern] for pattern in config.CODE_SYNC_IGNORES) + \
+               [".", full_path]
+        caching_cmds = ["aws", "s3", "cp", "--recursive"] + \
+                       flatten(["--exclude", "%s" % pattern] for pattern in config.CODE_SYNC_IGNORES) + \
+                       [full_path, cache_path]
+        mujoco_key_cmd = [
+            "aws", "s3", "sync", config.MUJOCO_KEY_PATH, "{}/.mujoco/".format(base)]
+        print(cache_cmds, cmds, caching_cmds, mujoco_key_cmd)
+        if not dry:
+            subprocess.check_call(cache_cmds)
+            subprocess.check_call(cmds)
+            subprocess.check_call(caching_cmds)
+            try:
+                subprocess.check_call(mujoco_key_cmd)
+            except Exception:
+                print('Unable to sync mujoco keys!')
+        S3_CODE_PATH = full_path
+        return full_path
 
 
 def upload_file_to_s3(script_content):
@@ -860,7 +983,14 @@ def upload_file_to_s3(script_content):
 
 def to_lab_kube_pod(
         params, docker_image, code_full_path,
-        script='scripts/run_experiment.py', is_gpu=False
+        python_command="python",
+        script='scripts/run_experiment.py',
+        is_gpu=False,
+        sync_s3_pkl=False,
+        periodic_sync=True,
+        periodic_sync_interval=15,
+        sync_all_data_node_to_s3=False,
+        terminate_machine=True
 ):
     """
     :param params: The parameters for the experiment. If logging directory parameters are provided, we will create
@@ -874,6 +1004,11 @@ def to_lab_kube_pod(
     resources = params.pop("resources")
     node_selector = params.pop("node_selector")
     exp_prefix = params.pop("exp_prefix")
+
+    kube_env = [
+        {"name": k, "value": v}
+        for k, v in (params.pop("env", None) or dict()).items()
+        ]
     mkdir_p(log_dir)
     pre_commands = list()
     pre_commands.append('mkdir -p ~/.aws')
@@ -887,34 +1022,69 @@ def to_lab_kube_pod(
     s3_mujoco_key_path = config.AWS_CODE_SYNC_S3_PATH + '/.mujoco/'
     pre_commands.append(
         'aws s3 cp --recursive {} {}'.format(s3_mujoco_key_path, '~/.mujoco'))
-    pre_commands.append('aws s3 cp --recursive %s %s' %
-                        (code_full_path, config.DOCKER_CODE_DIR))
-    pre_commands.append('cd %s' %
-                        (config.DOCKER_CODE_DIR))
+
+    if config.FAST_CODE_SYNC:
+        pre_commands.append('aws s3 cp %s /tmp/rllab_code.tar.gz' % code_full_path)
+        pre_commands.append('mkdir -p %s' % config.DOCKER_CODE_DIR)
+        pre_commands.append('tar -zxvf /tmp/rllab_code.tar.gz -C %s' % config.DOCKER_CODE_DIR)
+    else:
+        pre_commands.append('aws s3 cp --recursive %s %s' %
+                            (code_full_path, config.DOCKER_CODE_DIR))
+    pre_commands.append('cd %s' % config.DOCKER_CODE_DIR)
     pre_commands.append('mkdir -p %s' %
                         (log_dir))
-    pre_commands.append("""
-        while /bin/true; do
-            aws s3 sync --exclude '*' --include '*.csv' --include '*.json' {log_dir} {remote_log_dir} --region {aws_region}
-            sleep 15
-        done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
-                                             aws_region=config.AWS_REGION_NAME))
+
+    if sync_all_data_node_to_s3:
+        print('Syncing all data from node to s3.')
+        if periodic_sync:
+            if sync_s3_pkl:
+                pre_commands.append("""
+                            while /bin/true; do
+                                aws s3 sync {log_dir} {remote_log_dir} --region {aws_region} --quiet
+                                sleep {periodic_sync_interval}
+                            done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
+                                                                 aws_region=config.AWS_REGION_NAME,
+                                                                 periodic_sync_interval=periodic_sync_interval))
+            else:
+                pre_commands.append("""
+                            while /bin/true; do
+                                aws s3 sync {log_dir} {remote_log_dir} --region {aws_region} --quiet
+                                sleep {periodic_sync_interval}
+                            done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
+                                                                 aws_region=config.AWS_REGION_NAME,
+                                                                 periodic_sync_interval=periodic_sync_interval))
+    else:
+        if periodic_sync:
+            if sync_s3_pkl:
+                pre_commands.append("""
+                    while /bin/true; do
+                        aws s3 sync --exclude '*' --include '*.csv' --include '*.json' --include '*.pkl' {log_dir} {remote_log_dir} --region {aws_region} --quiet
+                        sleep {periodic_sync_interval}
+                    done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
+                                                         aws_region=config.AWS_REGION_NAME,
+                                                         periodic_sync_interval=periodic_sync_interval))
+            else:
+                pre_commands.append("""
+                    while /bin/true; do
+                        aws s3 sync --exclude '*' --include '*.csv' --include '*.json' {log_dir} {remote_log_dir} --region {aws_region} --quiet
+                        sleep {periodic_sync_interval}
+                    done & echo sync initiated""".format(log_dir=log_dir, remote_log_dir=remote_log_dir,
+                                                         aws_region=config.AWS_REGION_NAME,
+                                                         periodic_sync_interval=periodic_sync_interval))
     # copy the file to s3 after execution
     post_commands = list()
     post_commands.append('aws s3 cp --recursive %s %s' %
                          (log_dir,
                           remote_log_dir))
-    # post_commands.append('sleep 500000')
-    # command = to_docker_command(params, docker_image=docker_image, script=script,
-    #                             pre_commands=pre_commands,
-    #                             post_commands=post_commands)
+    if not terminate_machine:
+        post_commands.append('sleep infinity')
     command_list = list()
     if pre_commands is not None:
         command_list.extend(pre_commands)
     command_list.append("echo \"Running in docker\"")
     command_list.append(
         "%s 2>&1 | tee -a %s" % (
-            to_local_command(params, script),
+            to_local_command(params, python_command=python_command, script=script),
             "%s/stdouterr.log" % log_dir
         )
     )
@@ -924,7 +1094,7 @@ def to_lab_kube_pod(
     pod_name = config.KUBE_PREFIX + params["exp_name"]
     # underscore is not allowed in pod names
     pod_name = pod_name.replace("_", "-")
-    print "Is gpu: ", is_gpu
+    print("Is gpu: ", is_gpu)
     if not is_gpu:
         return {
             "apiVersion": "v1",
@@ -955,6 +1125,7 @@ def to_lab_kube_pod(
                 ],
                 "restartPolicy": "Never",
                 "nodeSelector": node_selector,
+                "dnsPolicy": "Default",
             }
         }
     return {
@@ -974,6 +1145,7 @@ def to_lab_kube_pod(
                 {
                     "name": "foo",
                     "image": docker_image,
+                    "env": kube_env,
                     "command": [
                         "/bin/bash",
                         "-c",
@@ -1005,6 +1177,7 @@ def to_lab_kube_pod(
             ],
             "restartPolicy": "Never",
             "nodeSelector": node_selector,
+            "dnsPolicy": "Default",
         }
     }
 
@@ -1031,7 +1204,7 @@ def concretize(maybe_stub):
                 maybe_stub.__stub_cache = maybe_stub.proxy_class(
                     *args, **kwargs)
             except Exception as e:
-                print("Error while instantiating %s" % maybe_stub.proxy_class)
+                print(("Error while instantiating %s" % maybe_stub.proxy_class))
                 import traceback
                 traceback.print_exc()
                 # import ipdb; ipdb.set_trace()
@@ -1040,10 +1213,10 @@ def concretize(maybe_stub):
     elif isinstance(maybe_stub, dict):
         # make sure that there's no hidden caveat
         ret = dict()
-        for k, v in maybe_stub.iteritems():
+        for k, v in maybe_stub.items():
             ret[concretize(k)] = concretize(v)
         return ret
     elif isinstance(maybe_stub, (list, tuple)):
-        return maybe_stub.__class__(map(concretize, maybe_stub))
+        return maybe_stub.__class__(list(map(concretize, maybe_stub)))
     else:
         return maybe_stub

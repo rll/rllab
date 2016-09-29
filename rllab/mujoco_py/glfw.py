@@ -2,9 +2,9 @@
 Python bindings for GLFW.
 '''
 
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
+
+
+
 
 __author__ = 'Florian Rhiem (florian.rhiem@gmail.com)'
 __copyright__ = 'Copyright (c) 2013 Florian Rhiem'
@@ -20,7 +20,7 @@ import textwrap
 
 # Python 3 compatibility:
 try:
-    _getcwd = os.getcwdu
+    _getcwd = os.getcwd
 except AttributeError:
     _getcwd = os.getcwd
 if sys.version_info.major > 2:

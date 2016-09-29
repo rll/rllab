@@ -20,8 +20,6 @@ class NormalizedEnv(ProxyEnv, Serializable):
     ):
         ProxyEnv.__init__(self, env)
         Serializable.quick_init(self, locals())
-        if not isinstance(env.action_space, Box):
-            print("Environment not using continuous actions; action normalization skipped!")
         self._scale_reward = scale_reward
         self._normalize_obs = normalize_obs
         self._normalize_reward = normalize_reward

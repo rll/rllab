@@ -10,7 +10,7 @@ from rllab.sampler.utils import rollout
 from rllab.core.serializable import Serializable
 import rllab.misc.logger as logger
 import rllab.plotter as plotter
-import cma_es_lib
+from . import cma_es_lib
 
 
 def sample_return(G, params, max_path_length, discount):

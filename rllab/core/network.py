@@ -1,4 +1,4 @@
-from itertools import izip
+
 
 import lasagne.layers as L
 import lasagne.nonlinearities as LN
@@ -7,6 +7,9 @@ import theano.tensor as TT
 import theano
 from rllab.misc import ext
 from rllab.core.lasagne_layers import OpLayer
+from rllab.core.lasagne_powered import LasagnePowered
+from rllab.core.serializable import Serializable
+
 import numpy as np
 
 
@@ -26,15 +29,17 @@ def wrapped_conv(*args, **kwargs):
             **copy
         )
     except Exception as e:
-        print "falling back to default conv2d"
+        print("falling back to default conv2d")
         return theano.tensor.nnet.conv2d(*args, **kwargs)
 
 
-class MLP(object):
-    def __init__(self, input_shape, output_dim, hidden_sizes, hidden_nonlinearity,
+class MLP(LasagnePowered, Serializable):
+    def __init__(self, output_dim, hidden_sizes, hidden_nonlinearity,
                  output_nonlinearity, hidden_W_init=LI.GlorotUniform(), hidden_b_init=LI.Constant(0.),
                  output_W_init=LI.GlorotUniform(), output_b_init=LI.Constant(0.),
-                 name=None, input_var=None, input_layer=None):
+                 name=None, input_var=None, input_layer=None, input_shape=None, batch_norm=False):
+
+        Serializable.quick_init(self, locals())
 
         if name is None:
             prefix = ""
@@ -56,7 +61,10 @@ class MLP(object):
                 W=hidden_W_init,
                 b=hidden_b_init,
             )
+            if batch_norm:
+                l_hid = L.batch_norm(l_hid)
             self._layers.append(l_hid)
+
         l_out = L.DenseLayer(
             l_hid,
             num_units=output_dim,
@@ -68,8 +76,9 @@ class MLP(object):
         self._layers.append(l_out)
         self._l_in = l_in
         self._l_out = l_out
-        self._input_var = l_in.input_var
+        # self._input_var = l_in.input_var
         self._output = L.get_output(l_out)
+        LasagnePowered.__init__(self, [l_out])
 
     @property
     def input_layer(self):
@@ -79,9 +88,9 @@ class MLP(object):
     def output_layer(self):
         return self._l_out
 
-    @property
-    def input_var(self):
-        return self._l_in.input_var
+    # @property
+    # def input_var(self):
+    #     return self._l_in.input_var
 
     @property
     def layers(self):
@@ -104,7 +113,7 @@ class GRULayer(L.Layer):
 
     def __init__(self, incoming, num_units, hidden_nonlinearity,
                  gate_nonlinearity=LN.sigmoid, name=None,
-                 W_init=LI.HeUniform(), b_init=LI.Constant(0.),
+                 W_init=LI.GlorotUniform(), b_init=LI.Constant(0.),
                  hidden_init=LI.Constant(0.), hidden_init_trainable=True):
 
         if hidden_nonlinearity is None:
@@ -185,8 +194,11 @@ class GRUStepLayer(L.MergeLayer):
 
 class GRUNetwork(object):
     def __init__(self, input_shape, output_dim, hidden_dim, hidden_nonlinearity=LN.rectify,
-                 output_nonlinearity=None, name=None, input_var=None):
-        l_in = L.InputLayer(shape=(None, None) + input_shape, input_var=input_var)
+                 output_nonlinearity=None, name=None, input_var=None, input_layer=None):
+        if input_layer is None:
+            l_in = L.InputLayer(shape=(None, None) + input_shape, input_var=input_var, name="input")
+        else:
+            l_in = input_layer
         l_step_input = L.InputLayer(shape=(None,) + input_shape)
         l_step_prev_hidden = L.InputLayer(shape=(None, hidden_dim))
         l_gru = GRULayer(l_in, num_units=hidden_dim, hidden_nonlinearity=hidden_nonlinearity,
@@ -267,6 +279,7 @@ class ConvNetwork(object):
                  hidden_nonlinearity=LN.rectify,
                  output_nonlinearity=LN.softmax,
                  name=None, input_var=None):
+
         if name is None:
             prefix = ""
         else:
@@ -282,8 +295,8 @@ class ConvNetwork(object):
         else:
             l_in = L.InputLayer(shape=(None,) + input_shape, input_var=input_var)
             l_hid = l_in
-        for idx, conv_filter, filter_size, stride, pad in izip(
-                xrange(len(conv_filters)),
+        for idx, conv_filter, filter_size, stride, pad in zip(
+                range(len(conv_filters)),
                 conv_filters,
                 conv_filter_sizes,
                 conv_strides,

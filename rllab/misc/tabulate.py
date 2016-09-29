@@ -3,8 +3,8 @@
 
 """Pretty-print tabular data."""
 
-from __future__ import print_function
-from __future__ import unicode_literals
+
+
 from collections import namedtuple
 from platform import python_version_tuple
 import re
@@ -16,7 +16,7 @@ if python_version_tuple()[0] < "3":
     _none_type = type(None)
     _int_type = int
     _float_type = float
-    _text_type = unicode
+    _text_type = str
     _binary_type = str
 else:
     from itertools import zip_longest as izip_longest
@@ -392,7 +392,7 @@ def _align_column(strings, alignment, minwidth=0, has_invisible=True):
     else:
         width_fn = len
 
-    maxwidth = max(max(map(width_fn, strings)), minwidth)
+    maxwidth = max(max(list(map(width_fn, strings))), minwidth)
     padded_strings = [padfn(maxwidth, s, has_invisible) for s in strings]
     return padded_strings
 
@@ -490,11 +490,11 @@ def _normalize_tabular_data(tabular_data, headers):
         # dict-like and pandas.DataFrame?
         if hasattr(tabular_data.values, "__call__"):
             # likely a conventional dict
-            keys = tabular_data.keys()
-            rows = list(izip_longest(*tabular_data.values()))  # columns have to be transposed
+            keys = list(tabular_data.keys())
+            rows = list(zip_longest(*list(tabular_data.values())))  # columns have to be transposed
         elif hasattr(tabular_data, "index"):
             # values is a property, has .index => it's likely a pandas.DataFrame (pandas 0.11.0)
-            keys = tabular_data.keys()
+            keys = list(tabular_data.keys())
             vals = tabular_data.values  # values matrix doesn't need to be transposed
             names = tabular_data.index
             rows = [[v]+list(row) for v,row in zip(names, vals)]
@@ -518,7 +518,7 @@ def _normalize_tabular_data(tabular_data, headers):
               and hasattr(rows[0], "_fields")): # namedtuple
             headers = list(map(_text_type, rows[0]._fields))
         elif headers == "keys" and len(rows) > 0:  # keys are column indices
-            headers = list(map(_text_type, range(len(rows[0]))))
+            headers = list(map(_text_type, list(range(len(rows[0])))))
 
     # take headers from the first row if necessary
     if headers == "firstrow" and len(rows) > 0:

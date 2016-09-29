@@ -106,7 +106,7 @@ class CEM(RLAlgorithm, Serializable):
             paths = [info[1] for info in infos]
 
             fs = np.array([path['returns'][0] for path in paths])
-            print(xs.shape, fs.shape)
+            print((xs.shape, fs.shape))
             best_inds = (-fs).argsort()[:n_best]
             best_xs = xs[best_inds]
             cur_mean = best_xs.mean(axis=0)

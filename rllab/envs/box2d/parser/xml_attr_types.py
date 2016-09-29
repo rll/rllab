@@ -59,7 +59,7 @@ class List(Type):
             segments = s.split(",")
         else:
             segments = s.split(" ")
-        return map(self.elem_type.from_str, segments)
+        return list(map(self.elem_type.from_str, segments))
 
 
 class Tuple(Type):

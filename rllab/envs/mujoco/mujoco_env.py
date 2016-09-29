@@ -20,7 +20,6 @@ MODEL_DIR = osp.abspath(
     )
 )
 
-
 BIG = 1e6
 
 
@@ -97,17 +96,26 @@ class MujocoEnv(Env):
     def action_bounds(self):
         return self.action_space.bounds
 
-    def reset_mujoco(self):
-        self.model.data.qpos = self.init_qpos + \
-                               np.random.normal(size=self.init_qpos.shape) * 0.01
-        self.model.data.qvel = self.init_qvel + \
-                               np.random.normal(size=self.init_qvel.shape) * 0.1
-        self.model.data.qacc = self.init_qacc
-        self.model.data.ctrl = self.init_ctrl
+    def reset_mujoco(self, init_state=None):
+        if init_state is None:
+            self.model.data.qpos = self.init_qpos + \
+                                   np.random.normal(size=self.init_qpos.shape) * 0.01
+            self.model.data.qvel = self.init_qvel + \
+                                   np.random.normal(size=self.init_qvel.shape) * 0.1
+            self.model.data.qacc = self.init_qacc
+            self.model.data.ctrl = self.init_ctrl
+        else:
+            start = 0
+            for datum_name in ["qpos", "qvel", "qacc", "ctrl"]:
+                datum = getattr(self.model.data, datum_name)
+                datum_dim = datum.shape[0]
+                datum = init_state[start: start + datum_dim]
+                setattr(self.model.data, datum_name, datum)
+                start += datum_dim
 
     @overrides
-    def reset(self):
-        self.reset_mujoco()
+    def reset(self, init_state=None):
+        self.reset_mujoco(init_state)
         self.model.forward()
         self.current_com = self.model.data.com_subtree[0]
         self.dcom = np.zeros_like(self.current_com)
@@ -144,6 +152,15 @@ class MujocoEnv(Env):
             self.model.data.qpos.flat,
             self.model.data.qvel.flat
         ])
+
+    @property
+    def _full_state(self):
+        return np.concatenate([
+            self.model.data.qpos,
+            self.model.data.qvel,
+            self.model.data.qacc,
+            self.model.data.ctrl,
+        ]).ravel()
 
     def inject_action_noise(self, action):
         # generate action noise
@@ -203,7 +220,7 @@ class MujocoEnv(Env):
 
     def print_stats(self):
         super(MujocoEnv, self).print_stats()
-        print "qpos dim:\t%d" % len(self.model.data.qpos)
+        print("qpos dim:\t%d" % len(self.model.data.qpos))
 
     def action_from_key(self, key):
         raise NotImplementedError

@@ -30,7 +30,7 @@ def load_class(class_path, superclass=None, prefix_hints=[]):
         raise ValueError("Cannot find module or class under path %s" % class_path)
     if type(module_or_class) == types.ModuleType:
         if superclass:
-            classes = filter(lambda x: issubclass(x, superclass), classesinmodule(module_or_class))
+            classes = [x for x in classesinmodule(module_or_class) if issubclass(x, superclass)]
         if len(classes) == 0:
             if superclass:
                 raise ValueError('Could not find any subclasses of %s defined in module %s' % (str(superclass), class_path))

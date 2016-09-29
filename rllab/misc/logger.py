@@ -1,8 +1,10 @@
-from __future__ import print_function
+from enum import Enum
+
 from rllab.misc.tabulate import tabulate
-from rllab.misc.console import mkdir_p
+from rllab.misc.console import mkdir_p, colorize
 from rllab.misc.autoargs import get_all_parameters
 from contextlib import contextmanager
+import numpy as np
 import os
 import os.path as osp
 import sys
@@ -11,7 +13,7 @@ import dateutil.tz
 import csv
 import joblib
 import json
-import cPickle as pickle
+import pickle
 import base64
 
 _prefixes = []
@@ -31,6 +33,7 @@ _tabular_header_written = set()
 
 _snapshot_dir = None
 _snapshot_mode = 'all'
+_snapshot_gap = 1
 
 _log_tabular_only = False
 _header_printed = False
@@ -65,7 +68,7 @@ def remove_text_output(file_name):
 
 
 def add_tabular_output(file_name):
-    _add_output(file_name, _tabular_outputs, _tabular_fds, mode='wb')
+    _add_output(file_name, _tabular_outputs, _tabular_fds, mode='w')
 
 
 def remove_tabular_output(file_name):
@@ -91,6 +94,12 @@ def set_snapshot_mode(mode):
     global _snapshot_mode
     _snapshot_mode = mode
 
+def get_snapshot_gap():
+    return _snapshot_gap
+
+def set_snapshot_gap(gap):
+    global _snapshot_gap
+    _snapshot_gap = gap
 
 def set_log_tabular_only(log_tabular_only):
     global _log_tabular_only
@@ -101,7 +110,7 @@ def get_log_tabular_only():
     return _log_tabular_only
 
 
-def log(s, with_prefix=True, with_timestamp=True):
+def log(s, with_prefix=True, with_timestamp=True, color=None):
     out = s
     if with_prefix:
         out = _prefix_str + out
@@ -109,10 +118,12 @@ def log(s, with_prefix=True, with_timestamp=True):
         now = datetime.datetime.now(dateutil.tz.tzlocal())
         timestamp = now.strftime('%Y-%m-%d %H:%M:%S.%f %Z')
         out = "%s | %s" % (timestamp, out)
+    if color is not None:
+        out = colorize(out, color)
     if not _log_tabular_only:
         # Also log to stdout
         print(out)
-        for fd in _text_fds.values():
+        for fd in list(_text_fds.values()):
             fd.write(out + '\n')
             fd.flush()
         sys.stdout.flush()
@@ -176,6 +187,7 @@ table_printer = TerminalTablePrinter()
 
 
 def dump_tabular(*args, **kwargs):
+    wh = kwargs.pop("write_header", None)
     if len(_tabular) > 0:
         if _log_tabular_only:
             table_printer.print_tabular(_tabular)
@@ -185,9 +197,9 @@ def dump_tabular(*args, **kwargs):
         tabular_dict = dict(_tabular)
         # Also write to the csv files
         # This assumes that the keys in each iteration won't change!
-        for tabular_fd in _tabular_fds.values():
-            writer = csv.DictWriter(tabular_fd, fieldnames=tabular_dict.keys())
-            if tabular_fd not in _tabular_header_written:
+        for tabular_fd in list(_tabular_fds.values()):
+            writer = csv.DictWriter(tabular_fd, fieldnames=list(tabular_dict.keys()))
+            if wh or (wh is None and tabular_fd not in _tabular_header_written):
                 writer.writeheader()
                 _tabular_header_written.add(tabular_fd)
             writer.writerow(tabular_dict)
@@ -210,6 +222,10 @@ def save_itr_params(itr, params):
             # override previous params
             file_name = osp.join(_snapshot_dir, 'params.pkl')
             joblib.dump(params, file_name, compress=3)
+        elif _snapshot_mode == "gap":
+            if itr % _snapshot_gap == 0:
+                file_name = osp.join(_snapshot_dir, 'itr_%d.pkl' % itr)
+                joblib.dump(params, file_name, compress=3)
         elif _snapshot_mode == 'none':
             pass
         else:
@@ -218,11 +234,11 @@ def save_itr_params(itr, params):
 
 def log_parameters(log_file, args, classes):
     log_params = {}
-    for param_name, param_value in args.__dict__.iteritems():
-        if any([param_name.startswith(x) for x in classes.keys()]):
+    for param_name, param_value in args.__dict__.items():
+        if any([param_name.startswith(x) for x in list(classes.keys())]):
             continue
         log_params[param_name] = param_value
-    for name, cls in classes.iteritems():
+    for name, cls in classes.items():
         if isinstance(cls, type):
             params = get_all_parameters(cls, args)
             params["_name"] = getattr(args, name)
@@ -236,41 +252,62 @@ def log_parameters(log_file, args, classes):
 
 
 def stub_to_json(stub_sth):
-    from rllab.misc.instrument import StubObject
-    from rllab.misc.instrument import StubAttr
-    from rllab.misc.instrument import StubClass
-    if isinstance(stub_sth, StubObject):
+    from rllab.misc import instrument
+    from rllab.misc import instrument2
+    if isinstance(stub_sth, instrument.StubObject) or isinstance(stub_sth, instrument2.StubObject):
         assert len(stub_sth.args) == 0
         data = dict()
-        for k, v in stub_sth.kwargs.iteritems():
+        for k, v in stub_sth.kwargs.items():
             data[k] = stub_to_json(v)
         data["_name"] = stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
         return data
-    elif isinstance(stub_sth, StubAttr):
+    elif isinstance(stub_sth, instrument.StubAttr) or isinstance(stub_sth, instrument2.StubAttr):
         return dict(
             obj=stub_to_json(stub_sth.obj),
             attr=stub_to_json(stub_sth.attr_name)
         )
-    elif isinstance(stub_sth, StubClass):
+    elif isinstance(stub_sth, instrument.StubMethodCall) or isinstance(stub_sth, instrument2.StubMethodCall):
+        return dict(
+            obj=stub_to_json(stub_sth.obj),
+            method_name=stub_to_json(stub_sth.method_name),
+            args=stub_to_json(stub_sth.args),
+            kwargs=stub_to_json(stub_sth.kwargs),
+        )
+    elif isinstance(stub_sth, instrument.BinaryOp) or isinstance(stub_sth, instrument2.BinaryOp):
+        return "binary_op"
+    elif isinstance(stub_sth, instrument.StubClass) or isinstance(stub_sth, instrument2.StubClass):
         return stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
     elif isinstance(stub_sth, dict):
-        return {stub_to_json(k): stub_to_json(v) for k, v in stub_sth.iteritems()}
+        return {stub_to_json(k): stub_to_json(v) for k, v in stub_sth.items()}
     elif isinstance(stub_sth, (list, tuple)):
-        return map(stub_to_json, stub_sth)
+        return list(map(stub_to_json, stub_sth))
     elif type(stub_sth) == type(lambda: None):
-        return stub_sth.__module__ + "." + stub_sth.__name__
+        if stub_sth.__module__ is not None:
+            return stub_sth.__module__ + "." + stub_sth.__name__
+        return stub_sth.__name__
+    elif "theano" in str(type(stub_sth)):
+        return repr(stub_sth)
     return stub_sth
+
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, type):
+            return {'$class': o.__module__ + "." + o.__name__}
+        elif isinstance(o, Enum):
+            return {'$enum': o.__module__ + "." + o.__class__.__name__ + '.' + o.name}
+        return json.JSONEncoder.default(self, o)
 
 
 def log_parameters_lite(log_file, args):
     log_params = {}
-    for param_name, param_value in args.__dict__.iteritems():
+    for param_name, param_value in args.__dict__.items():
         log_params[param_name] = param_value
     if args.args_data is not None:
         stub_method = pickle.loads(base64.b64decode(args.args_data))
         method_args = stub_method.kwargs
         log_params["json_args"] = dict()
-        for k, v in method_args.items():
+        for k, v in list(method_args.items()):
             log_params["json_args"][k] = stub_to_json(v)
         kwargs = stub_method.obj.kwargs
         for k in ["baseline", "env", "policy"]:
@@ -279,5 +316,21 @@ def log_parameters_lite(log_file, args):
         log_params["json_args"]["algo"] = stub_to_json(stub_method.obj)
     mkdir_p(os.path.dirname(log_file))
     with open(log_file, "w") as f:
-        json.dump(log_params, f, indent=2, sort_keys=True)
+        json.dump(log_params, f, indent=2, sort_keys=True, cls=MyEncoder)
 
+
+def log_variant(log_file, variant_data):
+    mkdir_p(os.path.dirname(log_file))
+    if hasattr(variant_data, "dump"):
+        variant_data = variant_data.dump()
+    variant_json = stub_to_json(variant_data)
+    with open(log_file, "w") as f:
+        json.dump(variant_json, f, indent=2, sort_keys=True, cls=MyEncoder)
+
+
+def record_tabular_misc_stat(key, values):
+    record_tabular(key + "Average", np.average(values))
+    record_tabular(key + "Std", np.std(values))
+    record_tabular(key + "Median", np.median(values))
+    record_tabular(key + "Min", np.amin(values))
+    record_tabular(key + "Max", np.amax(values))

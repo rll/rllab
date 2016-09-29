@@ -3,6 +3,7 @@ from rllab.core.parameterized import Parameterized
 
 class Policy(Parameterized):
     def __init__(self, env_spec):
+        Parameterized.__init__(self)
         self._env_spec = env_spec
 
     # Should be implemented by all policies
@@ -51,18 +52,6 @@ class Policy(Parameterized):
 
 
 class StochasticPolicy(Policy):
-    # def kl_sym(self, old_dist_info_vars, new_dist_info_vars):
-    #     return self.dist_family.kl_sym(old_dist_info_vars)
-    #     raise NotImplementedError
-    #
-    # def likelihood_ratio_sym(self, action_var, old_dist_info_vars, new_dist_info_vars):
-    #     raise NotImplementedError
-
-    # def entropy(self, dist_info):
-    #     raise NotImplementedError
-
-    # def log_likelihood_sym(self, obs_var, action_var):
-    #     raise NotImplementedError
 
     @property
     def distribution(self):
@@ -70,15 +59,6 @@ class StochasticPolicy(Policy):
         :rtype Distribution
         """
         raise NotImplementedError
-
-    # @property
-    # def dist_info_keys(self):
-    #     """
-    #     List of keys in the agent_info object related to information about the action distribution given the
-    #     observations
-    #     :return:
-    #     """
-    #     return list()
 
     def dist_info_sym(self, obs_var, state_info_vars):
         """

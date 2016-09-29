@@ -74,7 +74,7 @@ def add_args(_):
     def _add_args(cls, parser):
         args_info = _get_info(cls)
         prefix_ = _get_prefix(cls)
-        for arg_name, arg_info in args_info.iteritems():
+        for arg_name, arg_info in args_info.items():
             type = arg_info['type']
             # unfortunately boolean type doesn't work
             if type == bool:
@@ -94,7 +94,7 @@ def new_from_args(_):
         args_info = _get_info(cls)
         prefix_ = _get_prefix(cls)
         #     params = dict()
-        for arg_name, arg_info in args_info.iteritems():
+        for arg_name, arg_info in args_info.items():
             prefixed_arg_name = prefix_ + arg_name
             if hasattr(parsed_args, prefixed_arg_name):
                 val = getattr(parsed_args, prefixed_arg_name)
@@ -104,9 +104,9 @@ def new_from_args(_):
                     else:
                         params[arg_name] = val
                     if not silent:
-                        print colorize(
+                        print(colorize(
                             "using argument %s with value %s" % (arg_name, val),
-                            "yellow")
+                            "yellow"))
         return cls(*args, **params)
     return _new_from_args
 
@@ -134,11 +134,11 @@ def get_all_parameters(cls, parsed_args):
         if spec.defaults is None:
             arg_defaults = {}
         else:
-            arg_defaults = dict(zip(spec.args[::-1], spec.defaults[::-1]))
+            arg_defaults = dict(list(zip(spec.args[::-1], spec.defaults[::-1])))
     else:
         arg_defaults = {}
     all_params = {}
-    for arg_name, arg_info in info.iteritems():
+    for arg_name, arg_info in info.items():
         prefixed_name = prefix + arg_name
         arg_value = None
         if hasattr(parsed_args, prefixed_name):

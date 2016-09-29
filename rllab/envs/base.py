@@ -33,6 +33,7 @@ class Env(object):
     def action_space(self):
         """
         Returns a Space object
+        :rtype: rllab.spaces.base.Space
         """
         raise NotImplementedError
 
@@ -40,6 +41,7 @@ class Env(object):
     def observation_space(self):
         """
         Returns a Space object
+        :rtype: rllab.spaces.base.Space
         """
         raise NotImplementedError
 

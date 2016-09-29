@@ -16,3 +16,6 @@ class UniformControlPolicy(Policy, Serializable):
     def get_action(self, observation):
         return self.action_space.sample(), dict()
 
+    def get_params_internal(self, **tags):
+        return []
+

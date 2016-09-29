@@ -5,9 +5,10 @@
 import numpy, sys
 import theano
 import theano.tensor as T
-import cPickle
+import pickle
 import os
 from rllab.misc.ext import compile_function
+import collections
 
 
 def gauss_newton_product(cost, p, v, s):  # this computes the product Gv = J'HJv (G is the Gauss-Newton matrix)
@@ -18,7 +19,7 @@ def gauss_newton_product(cost, p, v, s):  # this computes the product Gv = J'HJv
         Jv = T.Rop(si, p, v)
         HJv = T.grad(T.sum(T.grad(cost, si, disconnected_inputs='ignore') * Jv), si, consider_constant=[Jv], disconnected_inputs='ignore')
         Gv = T.grad(T.sum(HJv * si), p, consider_constant=[HJv, Jv], disconnected_inputs='ignore')
-        Gv = map(T.as_tensor_variable, Gv)  # for CudaNdarray
+        Gv = list(map(T.as_tensor_variable, Gv))  # for CudaNdarray
         if sum_Gv is None:
             sum_Gv = Gv
         else:
@@ -60,11 +61,11 @@ class hf_optimizer:
 
         self.p = _p
         self.shapes = [i.get_value().shape for i in _p]
-        self.sizes = map(numpy.prod, self.shapes)
+        self.sizes = list(map(numpy.prod, self.shapes))
         self.positions = numpy.cumsum([0] + self.sizes)[:-1]
 
         g = T.grad(costs[0], _p)
-        g = map(T.as_tensor_variable, g)  # for CudaNdarray
+        g = list(map(T.as_tensor_variable, g))  # for CudaNdarray
         self.f_gc = compile_function(inputs, g + costs)  # during gradient computation
         self.f_cost = compile_function(inputs, costs)  # for quick cost evaluation
 
@@ -125,7 +126,7 @@ class hf_optimizer:
         backtracking = []
         backspaces = 0
 
-        for i in xrange(1, 1 + self.max_cg_iterations):
+        for i in range(1, 1 + self.max_cg_iterations):
             # adapted from http://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf (p.51)
             q = self.batch_Gv(d)
             dq = numpy.dot(d, q)
@@ -163,7 +164,7 @@ class hf_optimizer:
             while j > 0 and backtracking[j - 1][0] < backtracking[j][0]:
                 j -= 1
         if verbose:
-            print ' backtracked %i/%i' % (backtracking[j][2], i),
+            print(' backtracked %i/%i' % (backtracking[j][2], i), end=' ')
             sys.stdout.flush()
 
         return backtracking[j] + (i,)
@@ -236,15 +237,15 @@ class hf_optimizer:
         first_iteration = 1
 
         if isinstance(save_progress, str) and os.path.isfile(save_progress):
-            save = cPickle.load(file(save_progress))
+            save = pickle.load(file(save_progress))
             self.cg_last_x, best, self.lambda_, first_iteration, init_p = save
             first_iteration += 1
 
-            if verbose: print '* recovered saved model'
+            if verbose: print('* recovered saved model')
 
         try:
-            for u in xrange(first_iteration, 1 + num_updates):
-                if verbose: print 'update %i/%i,' % (u, num_updates),
+            for u in range(first_iteration, 1 + num_updates):
+                if verbose: print('update %i/%i,' % (u, num_updates), end=' ')
                 sys.stdout.flush()
 #                 import ipdb; ipdb.set_trace()
                 gradient = numpy.zeros(sum(self.sizes), dtype=theano.config.floatX)
@@ -255,8 +256,8 @@ class hf_optimizer:
                     gradient += self.list_to_flat(result[:len(self.p)]) / gradient_dataset.number_batches
                     costs.append(result[len(self.p):])
 
-                if verbose: print 'cost=', numpy.mean(costs, axis=0),
-                if verbose: print 'lambda=%.5f,' % self.lambda_,
+                if verbose: print('cost=', numpy.mean(costs, axis=0), end=' ')
+                if verbose: print('lambda=%.5f,' % self.lambda_, end=' ')
                 sys.stdout.flush()
 
                 after_cost, flat_delta, backtracking, num_cg_iterations = self.cg(-gradient)
@@ -280,27 +281,27 @@ class hf_optimizer:
                 if validation is not None and u % validation_frequency == 0:
                     if hasattr(validation, 'iterate'):
                         costs = numpy.mean([self.f_cost(*i) for i in validation.iterate()], axis=0)
-                    elif callable(validation):
+                    elif isinstance(validation, collections.Callable):
                         costs = validation()
-                    if verbose: print 'validation=', costs,
+                    if verbose: print('validation=', costs, end=' ')
                     if costs[0] < best[1]:
                         best = u, costs[0], [i.get_value().copy() for i in self.p]
-                        if verbose: print '*NEW BEST',
+                        if verbose: print('*NEW BEST', end=' ')
 
                 if isinstance(save_progress, str):
                     # do not save dataset states
                     save = self.cg_last_x, best, self.lambda_, u, [i.get_value().copy() for i in self.p]
-                    cPickle.dump(save, file(save_progress, 'wb'), cPickle.HIGHEST_PROTOCOL)
+                    pickle.dump(save, file(save_progress, 'wb'), pickle.HIGHEST_PROTOCOL)
 
                 if u - best[0] > patience:
-                    if verbose: print 'PATIENCE ELAPSED, BAILING OUT'
+                    if verbose: print('PATIENCE ELAPSED, BAILING OUT')
                     break
 
                 if verbose:
-                    print
+                    print()
                     sys.stdout.flush()
         except KeyboardInterrupt:
-            if verbose: print 'Interrupted by user.'
+            if verbose: print('Interrupted by user.')
 
         if best[2] is None:
             best[2] = [i.get_value().copy() for i in self.p]
@@ -331,12 +332,12 @@ class SequenceDataset:
         self.number_batches = number_batches
         self.items = []
 
-        for i_sequence in xrange(len(data[0])):
+        for i_sequence in range(len(data[0])):
             if batch_size is None:
-                self.items.append([data[i][i_sequence] for i in xrange(len(data))])
+                self.items.append([data[i][i_sequence] for i in range(len(data))])
             else:
-                for i_step in xrange(0, len(data[0][i_sequence]) - minimum_size + 1, batch_size):
-                    self.items.append([data[i][i_sequence][i_step:i_step + batch_size] for i in xrange(len(data))])
+                for i_step in range(0, len(data[0][i_sequence]) - minimum_size + 1, batch_size):
+                    self.items.append([data[i][i_sequence][i_step:i_step + batch_size] for i in range(len(data))])
 
         self.shuffle()
 
@@ -344,7 +345,7 @@ class SequenceDataset:
         numpy.random.shuffle(self.items)
 
     def iterate(self, update=True):
-        for b in xrange(self.number_batches):
+        for b in range(self.number_batches):
             yield self.items[(self.current_batch + b) % len(self.items)]
         if update: self.update()
 

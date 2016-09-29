@@ -40,11 +40,11 @@ class Space(object):
         """
         raise NotImplementedError
 
-    def new_tensor_variables(self, name, extra_dims):
+    def new_tensor_variable(self, name, extra_dims):
         """
-        Create one or a group of Theano tensor variables given the name and extra dimensions prepended
-        :param name: name of the variable (or prefix, if the returned value is a group of variables)
+        Create a Theano tensor variable given the name and extra dimensions prepended
+        :param name: name of the variable
         :param extra_dims: extra dimensions in the front
-        :return: the created tensor variable(s)
+        :return: the created tensor variable
         """
         raise NotImplementedError

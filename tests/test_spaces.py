@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 from rllab.spaces import Product, Discrete, Box
 import numpy as np
 

@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 from rllab.envs.base import Env, Step
 from rllab.policies.gaussian_mlp_policy import GaussianMLPPolicy
 from rllab.baselines.zero_baseline import ZeroBaseline

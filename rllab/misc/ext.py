@@ -1,12 +1,12 @@
-from __future__ import absolute_import
 from path import Path
 import sys
-import cPickle as pickle
+import pickle as pickle
 import random
 from rllab.misc.console import colorize, Message
 from collections import OrderedDict
 import numpy as np
 import operator
+from functools import reduce
 
 sys.setrecursionlimit(50000)
 
@@ -34,9 +34,9 @@ def compact(x):
     all None elements; otherwise it returns the input itself.
     """
     if isinstance(x, dict):
-        return dict((k, v) for k, v in x.iteritems() if v is not None)
+        return dict((k, v) for k, v in x.items() if v is not None)
     elif isinstance(x, list):
-        return filter(lambda elem: elem is not None, x)
+        return [elem for elem in x if elem is not None]
     return x
 
 
@@ -155,7 +155,7 @@ class AttrDict(dict):
 
 
 def is_iterable(obj):
-    return isinstance(obj, basestring) or getattr(obj, '__iter__', False)
+    return isinstance(obj, str) or getattr(obj, '__iter__', False)
 
 
 # cut the path for any time >= t
@@ -165,7 +165,7 @@ def truncate_path(p, t):
 
 def concat_paths(p1, p2):
     import numpy as np
-    return dict((k1, np.concatenate([p1[k1], p2[k1]])) for k1 in p1.keys() if k1 in p2)
+    return dict((k1, np.concatenate([p1[k1], p2[k1]])) for k1 in list(p1.keys()) if k1 in p2)
 
 
 def path_len(p):
@@ -184,19 +184,26 @@ def shuffled(sequence):
 
 seed_ = None
 
+
 def set_seed(seed):
+    seed %= 4294967294
     global seed_
     seed_ = seed
     import lasagne
     random.seed(seed)
     np.random.seed(seed)
     lasagne.random.set_rng(np.random.RandomState(seed))
-    print(
+    try:
+        import tensorflow as tf
+        tf.set_random_seed(seed)
+    except Exception as e:
+        print(e)
+    print((
         colorize(
             'using seed %s' % (str(seed)),
             'green'
         )
-    )
+    ))
 
 
 def get_seed():
@@ -289,7 +296,7 @@ def flatten_hessian(cost, wrt, consider_constant=None,
 
 def flatten_tensor_variables(ts):
     import theano.tensor as TT
-    return TT.concatenate(map(TT.flatten, ts))
+    return TT.concatenate(list(map(TT.flatten, ts)))
 
 
 def flatten_shape_dim(shape):
@@ -303,7 +310,7 @@ def print_lasagne_layer(layer, prefix=""):
     if getattr(layer, 'nonlinearity', None):
         params += ", nonlinearity=" + layer.nonlinearity.__name__
     params = params[2:]
-    print prefix + layer.__class__.__name__ + "[" + params + "]"
+    print(prefix + layer.__class__.__name__ + "[" + params + "]")
     if hasattr(layer, 'input_layers') and layer.input_layers is not None:
         [print_lasagne_layer(x, prefix + "  ") for x in layer.input_layers]
     elif hasattr(layer, 'input_layer') and layer.input_layer is not None:
@@ -325,13 +332,20 @@ def unflatten_tensor_variables(flatarr, shapes, symb_arrs):
     return arrs
 
 
-# assuming that the result could be averaged
+"""
+Devide function f's inputs into several slices. Evaluate f on those slices, and then average the result. It is useful when memory is not enough to process all data at once.
+Assume:
+1. each of f's inputs is iterable and composed of multiple "samples"
+2. outputs can be averaged over "samples"
+"""
 def sliced_fun(f, n_slices):
     def sliced_f(sliced_inputs, non_sliced_inputs=None):
         if non_sliced_inputs is None:
             non_sliced_inputs = []
+        if isinstance(non_sliced_inputs, tuple):
+            non_sliced_inputs = list(non_sliced_inputs)
         n_paths = len(sliced_inputs[0])
-        slice_size = max(1, n_paths / n_slices)
+        slice_size = max(1, n_paths // n_slices)
         ret_vals = None
         for start in range(0, n_paths, slice_size):
             inputs_slice = [v[start:start + slice_size] for v in sliced_inputs]
@@ -340,7 +354,8 @@ def sliced_fun(f, n_slices):
                 slice_ret_vals_as_list = [slice_ret_vals]
             else:
                 slice_ret_vals_as_list = slice_ret_vals
-            scaled_ret_vals = [np.asarray(v) * len(inputs_slice[0]) for v in slice_ret_vals_as_list]
+            scaled_ret_vals = [
+                np.asarray(v) * len(inputs_slice[0]) for v in slice_ret_vals_as_list]
             if ret_vals is None:
                 ret_vals = scaled_ret_vals
             else:
@@ -357,3 +372,20 @@ def sliced_fun(f, n_slices):
 
 def stdize(data, eps=1e-6):
     return (data - np.mean(data, axis=0)) / (np.std(data, axis=0) + eps)
+
+
+def iterate_minibatches_generic(input_lst=None, batchsize=None, shuffle=False):
+    if batchsize is None:
+        batchsize = len(input_lst[0])
+
+    assert all(len(x) == len(input_lst[0]) for x in input_lst)
+
+    if shuffle:
+        indices = np.arange(len(input_lst[0]))
+        np.random.shuffle(indices)
+    for start_idx in range(0, len(input_lst[0]), batchsize):
+        if shuffle:
+            excerpt = indices[start_idx:start_idx + batchsize]
+        else:
+            excerpt = slice(start_idx, start_idx + batchsize)
+        yield [input[excerpt] for input in input_lst]

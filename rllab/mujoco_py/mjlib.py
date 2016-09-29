@@ -1,7 +1,7 @@
 from ctypes import *
 import os
-from util import *
-from mjtypes import *
+from .util import *
+from .mjtypes import *
 
 osp = os.path
 if sys.platform.startswith("darwin"):

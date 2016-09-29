@@ -1,6 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
-
 import gym
 import gym.envs
 import gym.spaces
@@ -11,6 +8,7 @@ from rllab.envs.base import Env, Step
 from rllab.core.serializable import Serializable
 from rllab.spaces.box import Box
 from rllab.spaces.discrete import Discrete
+from rllab.spaces.product import Product
 from rllab.misc import logger
 import logging
 
@@ -20,6 +18,8 @@ def convert_gym_space(space):
         return Box(low=space.low, high=space.high)
     elif isinstance(space, gym.spaces.Discrete):
         return Discrete(n=space.n)
+    elif isinstance(space, gym.spaces.Tuple):
+        return Product([convert_gym_space(x) for x in space.spaces])
     else:
         raise NotImplementedError
 
@@ -44,7 +44,7 @@ class NoVideoSchedule(object):
 
 
 class GymEnv(Env, Serializable):
-    def __init__(self, env_name, record_video=True, video_schedule=None, log_dir=None):
+    def __init__(self, env_name, record_video=True, video_schedule=None, log_dir=None, record_log=True):
         if log_dir is None:
             if logger.get_snapshot_dir() is None:
                 logger.log("Warning: skipping Gym environment monitoring since snapshot_dir not configured.")
@@ -58,7 +58,9 @@ class GymEnv(Env, Serializable):
 
         monitor.logger.setLevel(logging.WARNING)
 
-        if log_dir is None:
+        assert not (not record_log and record_video)
+
+        if log_dir is None or record_log is False:
             self.monitoring = False
         else:
             if not record_video:
@@ -66,7 +68,7 @@ class GymEnv(Env, Serializable):
             else:
                 if video_schedule is None:
                     video_schedule = CappedCubicVideoSchedule()
-            self.env.monitor.start(log_dir, video_schedule)
+            self.env.monitor.start(log_dir, video_schedule, force=True)  # add 'force=True' if want overwrite dirs
             self.monitoring = True
 
         self._observation_space = convert_gym_space(env.observation_space)

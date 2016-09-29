@@ -98,10 +98,10 @@ class Viewer2D(object):
         if len(color) > 3:
             s = pygame.Surface((self.screen.get_width(), self.screen.get_height()), pygame.SRCALPHA)
             s.fill((0, 0, 0, 0))
-            pygame.draw.polygon(s, color, map(self.scale_point, points))
+            pygame.draw.polygon(s, color, list(map(self.scale_point, points)))
             self.screen.blit(s, (0, 0))
         else:
-            pygame.draw.polygon(self.screen, color, map(self.scale_point, points))
+            pygame.draw.polygon(self.screen, color, list(map(self.scale_point, points)))
 
     @property
     def screen(self):
@@ -127,9 +127,9 @@ class Viewer2D(object):
                 self.screen.fill(colors[(start_idx+row+col)%2], the_square)
 
     def pause(self):
-        print "press any key on the screen to continue..."
+        print("press any key on the screen to continue...")
         while True:
             event = pygame.event.wait()
             if event.type == pygame.KEYDOWN:
                 break
-        print "continuing"
+        print("continuing")

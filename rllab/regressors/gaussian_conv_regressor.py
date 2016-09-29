@@ -1,51 +1,55 @@
+import numpy as np
 import lasagne
 import lasagne.layers as L
 import lasagne.nonlinearities as NL
-import numpy as np
 import theano
 import theano.tensor as TT
-
+from rllab.misc.ext import compile_function
 from rllab.core.lasagne_layers import ParamLayer
 from rllab.core.lasagne_powered import LasagnePowered
-from rllab.core.network import MLP
-from rllab.core.serializable import Serializable
-from rllab.misc import logger
-from rllab.misc.ext import compile_function
+from rllab.core.network import ConvNetwork
+from rllab.misc import tensor_utils
 from rllab.optimizers.lbfgs_optimizer import LbfgsOptimizer
 from rllab.optimizers.penalty_lbfgs_optimizer import PenaltyLbfgsOptimizer
 from rllab.distributions.diagonal_gaussian import DiagonalGaussian
+from rllab.core.serializable import Serializable
 from rllab.misc.ext import iterate_minibatches_generic
+from rllab.misc import logger
 
 
-class GaussianMLPRegressor(LasagnePowered, Serializable):
+class GaussianConvRegressor(LasagnePowered, Serializable):
     """
     A class for performing regression by fitting a Gaussian distribution to the outputs.
     """
 
     def __init__(
             self,
+            name,
             input_shape,
             output_dim,
-            mean_network=None,
-            hidden_sizes=(32, 32),
+            hidden_sizes,
+            conv_filters,conv_filter_sizes,conv_strides,conv_pads,
             hidden_nonlinearity=NL.rectify,
+            mean_network=None,
+
             optimizer=None,
             use_trust_region=True,
             step_size=0.01,
+            subsample_factor=1.0,
+            batchsize=None,
+
             learn_std=True,
             init_std=1.0,
             adaptive_std=False,
             std_share_network=False,
+            std_conv_filters=[],std_conv_filters_sizes=[],std_conv_strides=[],std_conv_pads=[],
             std_hidden_sizes=(32, 32),
             std_nonlinearity=None,
             normalize_inputs=True,
             normalize_outputs=True,
-            name=None,
-            batchsize=None,
-            subsample_factor=1.,
     ):
         """
-        :param input_shape: Shape of the input data.
+        :param input_shape: usually for images of the form (width,height,channel)
         :param output_dim: Dimension of output.
         :param hidden_sizes: Number of hidden units of each layer of the mean network.
         :param hidden_nonlinearity: Non-linearity used for each layer of the mean network.
@@ -63,21 +67,25 @@ class GaussianMLPRegressor(LasagnePowered, Serializable):
         """
         Serializable.quick_init(self, locals())
 
-        self._batchsize = batchsize
-        self._subsample_factor = subsample_factor
 
         if optimizer is None:
             if use_trust_region:
-                optimizer = PenaltyLbfgsOptimizer()
+                optimizer = PenaltyLbfgsOptimizer("optimizer")
             else:
-                optimizer = LbfgsOptimizer()
+                optimizer = LbfgsOptimizer("optimizer")
 
         self._optimizer = optimizer
 
+        self.input_shape = input_shape
         if mean_network is None:
-            mean_network = MLP(
+            mean_network = ConvNetwork(
+                name="mean_network",
                 input_shape=input_shape,
                 output_dim=output_dim,
+                conv_filters=conv_filters,
+                conv_filter_sizes=conv_filter_sizes,
+                conv_strides=conv_strides,
+                conv_pads=conv_pads,
                 hidden_sizes=hidden_sizes,
                 hidden_nonlinearity=hidden_nonlinearity,
                 output_nonlinearity=None,
@@ -86,10 +94,15 @@ class GaussianMLPRegressor(LasagnePowered, Serializable):
         l_mean = mean_network.output_layer
 
         if adaptive_std:
-            l_log_std = MLP(
+            l_log_std = ConvNetwork(
+                name="log_std_network",
                 input_shape=input_shape,
                 input_var=mean_network.input_layer.input_var,
                 output_dim=output_dim,
+                conv_filters=std_conv_filters,
+                conv_filter_sizes=std_conv_filter_sizes,
+                conv_strides=std_conv_strides,
+                conv_pads=std_conv_pads,
                 hidden_sizes=std_hidden_sizes,
                 hidden_nonlinearity=std_nonlinearity,
                 output_nonlinearity=None,
@@ -111,14 +124,14 @@ class GaussianMLPRegressor(LasagnePowered, Serializable):
         old_log_stds_var = TT.matrix("old_log_stds")
 
         x_mean_var = theano.shared(
-            np.zeros((1,) + input_shape, dtype=theano.config.floatX),
+            np.zeros((1,np.prod(input_shape)), dtype=theano.config.floatX),
             name="x_mean",
-            broadcastable=(True,) + (False,) * len(input_shape)
+            broadcastable=(True,False),
         )
         x_std_var = theano.shared(
-            np.ones((1,) + input_shape, dtype=theano.config.floatX),
+            np.ones((1,np.prod(input_shape)), dtype=theano.config.floatX),
             name="x_std",
-            broadcastable=(True,) + (False,) * len(input_shape)
+            broadcastable=(True,False),
         )
         y_mean_var = theano.shared(
             np.zeros((1, output_dim), dtype=theano.config.floatX),
@@ -190,6 +203,8 @@ class GaussianMLPRegressor(LasagnePowered, Serializable):
         self._x_std_var = x_std_var
         self._y_mean_var = y_mean_var
         self._y_std_var = y_std_var
+        self._subsample_factor = subsample_factor
+        self._batchsize = batchsize
 
     def fit(self, xs, ys):
 

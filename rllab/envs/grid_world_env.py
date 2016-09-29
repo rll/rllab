@@ -35,20 +35,24 @@ MAPS = {
 
 class GridWorldEnv(Env, Serializable):
     """
-    S : starting point
-    F : free space
-    W : wall
-    H : hole (terminates episode)
-    G : goal
+    'S' : starting point
+    'F' or '.': free space
+    'W' or 'x': wall
+    'H' or 'o': hole (terminates episode)
+    'G' : goal
 
 
     """
 
     def __init__(self, desc='4x4'):
         Serializable.quick_init(self, locals())
-        if isinstance(desc, basestring):
+        if isinstance(desc, str):
             desc = MAPS[desc]
-        self.desc = desc = np.array(map(list, desc))
+        desc = np.array(list(map(list, desc)))
+        desc[desc == '.'] = 'F'
+        desc[desc == 'o'] = 'H'
+        desc[desc == 'x'] = 'W'
+        self.desc = desc
         self.n_row, self.n_col = desc.shape
         (start_x,), (start_y,) = np.nonzero(desc == 'S')
         self.start_state = start_x * self.n_col + start_y
@@ -89,7 +93,7 @@ class GridWorldEnv(Env, Serializable):
         next_state_idx = np.random.choice(len(probs), p=probs)
         next_state = possible_next_states[next_state_idx][0]
 
-        next_x = next_state / self.n_col
+        next_x = next_state // self.n_col
         next_y = next_state % self.n_col
 
         next_state_type = self.desc[next_x, next_y]
@@ -115,10 +119,10 @@ class GridWorldEnv(Env, Serializable):
         :param action: action
         :return: a list of pairs (s', p(s'|s,a))
         """
-        assert self.observation_space.contains(state)
-        assert self.action_space.contains(action)
+        # assert self.observation_space.contains(state)
+        # assert self.action_space.contains(action)
 
-        x = state / self.n_col
+        x = state // self.n_col
         y = state % self.n_col
         coords = np.array([x, y])
 
@@ -143,3 +147,4 @@ class GridWorldEnv(Env, Serializable):
     @property
     def observation_space(self):
         return Discrete(self.n_row * self.n_col)
+

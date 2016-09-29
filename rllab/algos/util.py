@@ -1,17 +1,19 @@
 import numpy as np
-import theano
 import time
 from rllab.core.serializable import Serializable
 from rllab.misc.ext import extract
-
-floatX = theano.config.floatX
 
 
 def center_advantages(advantages):
     return (advantages - np.mean(advantages)) / (advantages.std() + 1e-8)
 
+
 def shift_advantages_to_positive(advantages):
     return (advantages - np.min(advantages)) + 1e-8
+
+
+def sign(x):
+    return 1. * (x >= 0) - 1. * (x < 0)
 
 
 class ReplayPool(Serializable):
@@ -25,8 +27,8 @@ class ReplayPool(Serializable):
             observation_shape,
             action_dim,
             max_steps,
-            observation_dtype=floatX,
-            action_dtype=floatX,
+            observation_dtype=np.float32,
+            action_dtype=np.float32,
             concat_observations=False,
             concat_length=1,
             rng=None):
@@ -49,9 +51,8 @@ class ReplayPool(Serializable):
         self.observations = np.zeros(
             (max_steps,) + observation_shape, dtype=observation_dtype)
         self.actions = np.zeros((max_steps, action_dim), dtype=action_dtype)
-        self.rewards = np.zeros((max_steps,), dtype=floatX)
+        self.rewards = np.zeros((max_steps,), dtype=np.float32)
         self.terminals = np.zeros((max_steps,), dtype='bool')
-        #self.horizon_terminals = np.zeros((max_steps,), dtype='bool')
         self.extras = None
         self.concat_observations = concat_observations
         self.concat_length = concat_length
@@ -91,11 +92,11 @@ class ReplayPool(Serializable):
     def __setstate__(self, d):
         super(ReplayPool, self).__setstate__(d)
         self.bottom, self.top, self.size, self.observations, self.actions, \
-            self.rewards, self.terminals, self.extras, self.rng = extract(
-                d,
-                "bottom", "top", "size", "observations", "actions", "rewards",
-                "terminals", "extras", "rng"
-            )
+        self.rewards, self.terminals, self.extras, self.rng = extract(
+            d,
+            "bottom", "top", "size", "observations", "actions", "rewards",
+            "terminals", "extras", "rng"
+        )
 
     def add_sample(self, observation, action, reward, terminal, extra=None):
         """Add a time step record.
@@ -111,7 +112,7 @@ class ReplayPool(Serializable):
         self.actions[self.top] = action
         self.rewards[self.top] = reward
         self.terminals[self.top] = terminal
-        #self.horizon_terminals[self.top] = horizon_terminal
+        # self.horizon_terminals[self.top] = horizon_terminal
         if extra is not None:
             if self.extras is None:
                 assert self.size == 0, "extra must be consistent"
@@ -224,7 +225,7 @@ class ReplayPool(Serializable):
             if np.any(self.terminals.take(initial_indices[0:-1], mode='wrap')):
                 continue
             # do not pick samples which terminated because of horizon
-            #if np.any(self.horizon_terminals.take(initial_indices[0:-1],
+            # if np.any(self.horizon_terminals.take(initial_indices[0:-1],
             #    mode='wrap')) or self.horizon_terminals[end_index]:
             #    continue
 
@@ -262,7 +263,6 @@ class ReplayPool(Serializable):
             extras=extras,
             next_extras=next_extras,
         )
-            
 
 
 # TESTING CODE BELOW THIS POINT...
@@ -283,21 +283,20 @@ def simple_tests():
         terminal = False
         if np.random.random() < .05:
             terminal = True
-        print 'img', img
+        print('img', img)
         dataset.add_sample(img, action, reward, terminal)
-        print "S", dataset.observations
-        print "A", dataset.actions
-        print "R", dataset.rewards
-        print "T", dataset.terminal
-        print "SIZE", dataset.size
-        print
-    print "LAST CONCAT STATE", dataset.last_concat_state()
-    print
-    print 'BATCH', dataset.random_batch(2)
+        print("S", dataset.observations)
+        print("A", dataset.actions)
+        print("R", dataset.rewards)
+        print("T", dataset.terminal)
+        print("SIZE", dataset.size)
+        print()
+    print("LAST CONCAT STATE", dataset.last_concat_state())
+    print()
+    print('BATCH', dataset.random_batch(2))
 
 
 def speed_tests():
-
     dataset = ReplayPool(
         observation_shape=(80, 80),
         action_dim=1,
@@ -315,18 +314,17 @@ def speed_tests():
         if np.random.random() < .05:
             terminal = True
         dataset.add_sample(img, action, reward, terminal)
-    print "samples per second: ", 100000 / (time.time() - start)
+    print("samples per second: ", 100000 / (time.time() - start))
 
     start = time.time()
     for _ in range(200):
         dataset.random_batch(32)
-    print "batches per second: ", 200 / (time.time() - start)
+    print("batches per second: ", 200 / (time.time() - start))
 
-    print dataset.last_concat_state()
+    print(dataset.last_concat_state())
 
 
 def trivial_tests():
-
     dataset = ReplayPool(
         observation_shape=(1, 2),
         action_dim=1,
@@ -342,8 +340,8 @@ def trivial_tests():
     dataset.add_sample(img1, 1, 1, False)
     dataset.add_sample(img2, 2, 2, False)
     dataset.add_sample(img3, 2, 2, True)
-    print "last", dataset.last_concat_state()
-    print "random", dataset.random_batch(1)
+    print("last", dataset.last_concat_state())
+    print("random", dataset.random_batch(1))
 
 
 def max_size_tests():
@@ -374,7 +372,7 @@ def max_size_tests():
         dataset2.add_sample(img, action, reward, terminal)
         np.testing.assert_array_almost_equal(dataset1.last_concat_state(),
                                              dataset2.last_concat_state())
-        print "passed"
+        print("passed")
 
 
 def test_memory_usage_ok():
@@ -388,16 +386,16 @@ def test_memory_usage_ok():
     )
     last = time.time()
 
-    for i in xrange(1000000000):
+    for i in range(1000000000):
         if (i % 100000) == 0:
-            print i
+            print(i)
         dataset.add_sample(np.random.random((80, 80)), 1, 1, False)
         if i > 200000:
             dataset.random_batch(32)
         if (i % 10007) == 0:
-            print time.time() - last
+            print(time.time() - last)
             mem_usage = memory_profiler.memory_usage(-1)
-            print len(dataset), mem_usage
+            print(len(dataset), mem_usage)
         last = time.time()
 
 
@@ -406,6 +404,7 @@ def main():
     # test_memory_usage_ok()
     max_size_tests()
     simple_tests()
+
 
 if __name__ == "__main__":
     main()

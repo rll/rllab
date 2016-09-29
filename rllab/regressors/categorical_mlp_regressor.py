@@ -18,7 +18,6 @@ NONE = list()
 
 
 class CategoricalMLPRegressor(LasagnePowered, Serializable):
-
     """
     A class for performing regression (or classification, really) by fitting a categorical distribution to the outputs.
     Assumes that the outputs will be always a one hot vector.
@@ -77,12 +76,12 @@ class CategoricalMLPRegressor(LasagnePowered, Serializable):
         x_mean_var = theano.shared(
             np.zeros((1,) + input_shape),
             name="x_mean",
-            broadcastable=(True,) + (False, ) * len(input_shape)
+            broadcastable=(True,) + (False,) * len(input_shape)
         )
         x_std_var = theano.shared(
             np.ones((1,) + input_shape),
             name="x_std",
-            broadcastable=(True,) + (False, ) * len(input_shape)
+            broadcastable=(True,) + (False,) * len(input_shape)
         )
 
         normalized_xs_var = (xs_var - x_mean_var) / x_std_var
@@ -102,6 +101,7 @@ class CategoricalMLPRegressor(LasagnePowered, Serializable):
 
         self._f_predict = ext.compile_function([xs_var], predicted)
         self._f_prob = ext.compile_function([xs_var], prob_var)
+        self._prob_network = prob_network
         self._l_prob = l_prob
 
         optimizer_args = dict(
@@ -151,9 +151,12 @@ class CategoricalMLPRegressor(LasagnePowered, Serializable):
 
     def predict_log_likelihood(self, xs, ys):
         prob = self._f_prob(np.asarray(xs))
-        # if np.any(np.abs(prob) > 1e3):
-        #     import ipdb; ipdb.set_trace()
         return self._dist.log_likelihood(np.asarray(ys), dict(prob=prob))
+
+    def log_likelihood_sym(self, x_var, y_var):
+        normalized_xs_var = (x_var - self._x_mean_var) / self._x_std_var
+        prob = L.get_output(self._l_prob, {self._prob_network.input_layer: normalized_xs_var})
+        return self._dist.log_likelihood_sym(TT.cast(y_var, 'int32'), dict(prob=prob))
 
     def get_param_values(self, **tags):
         return LasagnePowered.get_param_values(self, **tags)

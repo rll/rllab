@@ -25,18 +25,18 @@ class Parameterized(object):
         """
         raise NotImplementedError
 
-    def get_params(self, **tags):
+    def get_params(self, **tags):  # adds the list to the _cached_params dict under the tuple key (one)
         """
         Get the list of parameters, filtered by the provided tags.
         Some common tags include 'regularizable' and 'trainable'
         """
-        tag_tuple = tuple(sorted(tags.items(), key=lambda x: x[0]))
+        tag_tuple = tuple(sorted(list(tags.items()), key=lambda x: x[0]))
         if tag_tuple not in self._cached_params:
             self._cached_params[tag_tuple] = self.get_params_internal(**tags)
         return self._cached_params[tag_tuple]
 
     def get_param_dtypes(self, **tags):
-        tag_tuple = tuple(sorted(tags.items(), key=lambda x: x[0]))
+        tag_tuple = tuple(sorted(list(tags.items()), key=lambda x: x[0]))
         if tag_tuple not in self._cached_param_dtypes:
             self._cached_param_dtypes[tag_tuple] = \
                 [param.get_value(borrow=True).dtype
@@ -44,7 +44,7 @@ class Parameterized(object):
         return self._cached_param_dtypes[tag_tuple]
 
     def get_param_shapes(self, **tags):
-        tag_tuple = tuple(sorted(tags.items(), key=lambda x: x[0]))
+        tag_tuple = tuple(sorted(list(tags.items()), key=lambda x: x[0]))
         if tag_tuple not in self._cached_param_shapes:
             self._cached_param_shapes[tag_tuple] = \
                 [param.get_value(borrow=True).shape
@@ -67,7 +67,7 @@ class Parameterized(object):
                 param_values):
             param.set_value(value.astype(dtype))
             if debug:
-                print "setting value of %s" % param.name
+                print("setting value of %s" % param.name)
 
     def flat_to_params(self, flattened_params, **tags):
         return unflatten_tensors(flattened_params, self.get_param_shapes(**tags))

@@ -26,10 +26,15 @@ class LinearFeatureBaseline(Baseline):
     def fit(self, paths):
         featmat = np.concatenate([self._features(path) for path in paths])
         returns = np.concatenate([path["returns"] for path in paths])
-        self._coeffs = np.linalg.lstsq(
-            featmat.T.dot(featmat) + self._reg_coeff * np.identity(featmat.shape[1]),
-            featmat.T.dot(returns)
-        )[0]
+        reg_coeff = self._reg_coeff
+        for _ in range(5):
+            self._coeffs = np.linalg.lstsq(
+                featmat.T.dot(featmat) + reg_coeff * np.identity(featmat.shape[1]),
+                featmat.T.dot(returns)
+            )[0]
+            if not np.any(np.isnan(self._coeffs)):
+                break
+            reg_coeff *= 10
 
     @overrides
     def predict(self, path):

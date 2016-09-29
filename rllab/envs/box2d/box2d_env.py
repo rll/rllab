@@ -174,9 +174,9 @@ class Box2DEnv(Env):
         for _ in range(self.frame_skip):
             self.forward_dynamics(action)
         # notifies that we have stepped the world
-        reward_computer.next()
+        next(reward_computer)
         # actually get the reward
-        reward = reward_computer.next()
+        reward = next(reward_computer)
         self._invalidate_state_caches()
         done = self.is_current_done()
         next_obs = self.get_current_obs()
@@ -298,7 +298,7 @@ class Box2DEnv(Env):
                 elif state.typ == "yvel":
                     new_obs = com_quant[3]
                 else:
-                    print state.typ
+                    print(state.typ)
                     # orientation and angular velocity of the whole body is not
                     # supported
                     raise NotImplementedError

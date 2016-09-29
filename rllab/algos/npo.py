@@ -17,13 +17,16 @@ class NPO(BatchPolopt):
             optimizer=None,
             optimizer_args=None,
             step_size=0.01,
-            **kwargs):
+            truncate_local_is_ratio=None,
+            **kwargs
+    ):
         if optimizer is None:
             if optimizer_args is None:
                 optimizer_args = dict()
             optimizer = PenaltyLbfgsOptimizer(**optimizer_args)
         self.optimizer = optimizer
         self.step_size = step_size
+        self.truncate_local_is_ratio = truncate_local_is_ratio
         super(NPO, self).__init__(**kwargs)
 
     @overrides
@@ -69,6 +72,8 @@ class NPO(BatchPolopt):
         dist_info_vars = self.policy.dist_info_sym(obs_var, state_info_vars)
         kl = dist.kl_sym(old_dist_info_vars, dist_info_vars)
         lr = dist.likelihood_ratio_sym(action_var, old_dist_info_vars, dist_info_vars)
+        if self.truncate_local_is_ratio is not None:
+            lr = TT.minimum(self.truncate_local_is_ratio, lr)
         if is_recurrent:
             mean_kl = TT.sum(kl * valid_var) / TT.sum(valid_var)
             surr_loss = - TT.sum(lr * advantage_var * valid_var) / TT.sum(valid_var)
@@ -106,11 +111,13 @@ class NPO(BatchPolopt):
         if self.policy.recurrent:
             all_input_values += (samples_data["valids"],)
         loss_before = self.optimizer.loss(all_input_values)
+        mean_kl_before = self.optimizer.constraint_val(all_input_values)
         self.optimizer.optimize(all_input_values)
         mean_kl = self.optimizer.constraint_val(all_input_values)
         loss_after = self.optimizer.loss(all_input_values)
         logger.record_tabular('LossBefore', loss_before)
         logger.record_tabular('LossAfter', loss_after)
+        logger.record_tabular('MeanKLBefore', mean_kl_before)
         logger.record_tabular('MeanKL', mean_kl)
         logger.record_tabular('dLoss', loss_before - loss_after)
         return dict()

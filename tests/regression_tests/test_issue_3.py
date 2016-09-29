@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 
 from nose2.tools import such
 from rllab.envs.box2d.cartpole_env import CartpoleEnv

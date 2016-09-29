@@ -46,7 +46,11 @@ class Discrete(Space):
         return self.n
 
     def weighted_sample(self, weights):
-        return special.weighted_sample(weights, xrange(self.n))
+        return special.weighted_sample(weights, range(self.n))
+
+    @property
+    def default_value(self):
+        return 0
 
     def new_tensor_variable(self, name, extra_dims):
         if self.n <= 2 ** 8:

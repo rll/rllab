@@ -16,14 +16,22 @@ def weighted_sample(weights, objects):
     cs = np.cumsum(weights)
     # Find the index of the first weight over a random value.
     idx = sum(cs < np.random.rand())
-    return objects[idx]
+    return objects[min(idx, len(objects) - 1)]
+
+
+def weighted_sample_n(prob_matrix, items):
+    s = prob_matrix.cumsum(axis=1)
+    r = np.random.rand(prob_matrix.shape[0])
+    k = (s < r.reshape((-1, 1))).sum(axis=1)
+    n_items = len(items)
+    return items[np.minimum(k, n_items - 1)]
 
 
 # compute softmax for each row
 def softmax(x):
-    shifted = x - np.max(x, axis=1, keepdims=True)
+    shifted = x - np.max(x, axis=-1, keepdims=True)
     expx = np.exp(shifted)
-    return expx / np.sum(expx, axis=1, keepdims=True)
+    return expx / np.sum(expx, axis=-1, keepdims=True)
 
 
 def softmax_sym(x):
@@ -32,7 +40,7 @@ def softmax_sym(x):
 
 # compute entropy for each row
 def cat_entropy(x):
-    return -np.sum(x * np.log(x), axis=1)
+    return -np.sum(x * np.log(x), axis=-1)
 
 
 # compute perplexity for each row
@@ -48,8 +56,6 @@ def explained_variance_1d(ypred, y):
             return 0
         else:
             return 1
-    if abs(1 - np.var(y - ypred) / (vary + 1e-8)) > 1e5:
-        import ipdb; ipdb.set_trace()
     return 1 - np.var(y - ypred) / (vary + 1e-8)
 
 
@@ -75,6 +81,8 @@ def from_onehot(v):
 
 
 def from_onehot_n(v):
+    if len(v) == 0:
+        return []
     return np.nonzero(v)[1]
 
 
@@ -100,7 +108,7 @@ def discount_cumsum(x, discount):
     # See https://docs.scipy.org/doc/scipy/reference/tutorial/signal.html#difference-equation-filtering
     # Here, we have y[t] - discount*y[t+1] = x[t]
     # or rev(y)[t] - discount*rev(y)[t-1] = rev(x)[t]
-    return scipy.signal.lfilter([1], [1, -discount], x[::-1], axis=0)[::-1]
+    return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 
 def discount_return(x, discount):
@@ -169,7 +177,6 @@ def rk4(derivs, y0, t, *args, **kwargs):
     i = 0
 
     for i in np.arange(len(t) - 1):
-
         thist = t[i]
         dt = t[i + 1] - thist
         dt2 = dt / 2.0
@@ -181,5 +188,3 @@ def rk4(derivs, y0, t, *args, **kwargs):
         k4 = np.asarray(derivs(y0 + dt * k3, thist + dt, *args, **kwargs))
         yout[i + 1] = y0 + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
     return yout
-
-

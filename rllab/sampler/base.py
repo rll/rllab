@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 import numpy as np
 from rllab.misc import special
 from rllab.misc import tensor_utils
@@ -48,8 +48,14 @@ class BaseSampler(Sampler):
     def process_samples(self, itr, paths):
         baselines = []
         returns = []
-        for path in paths:
-            path_baselines = np.append(self.algo.baseline.predict(path), 0)
+
+        if hasattr(self.algo.baseline, "predict_n"):
+            all_path_baselines = self.algo.baseline.predict_n(paths)
+        else:
+            all_path_baselines = [self.algo.baseline.predict(path) for path in paths]
+
+        for idx, path in enumerate(paths):
+            path_baselines = np.append(all_path_baselines[idx], 0)
             deltas = path["rewards"] + \
                      self.algo.discount * path_baselines[1:] - \
                      path_baselines[:-1]
@@ -59,10 +65,16 @@ class BaseSampler(Sampler):
             baselines.append(path_baselines[:-1])
             returns.append(path["returns"])
 
+        ev = special.explained_variance_1d(
+            np.concatenate(baselines),
+            np.concatenate(returns)
+        )
+
         if not self.algo.policy.recurrent:
             observations = tensor_utils.concat_tensor_list([path["observations"] for path in paths])
             actions = tensor_utils.concat_tensor_list([path["actions"] for path in paths])
             rewards = tensor_utils.concat_tensor_list([path["rewards"] for path in paths])
+            returns = tensor_utils.concat_tensor_list([path["returns"] for path in paths])
             advantages = tensor_utils.concat_tensor_list([path["advantages"] for path in paths])
             env_infos = tensor_utils.concat_tensor_dict_list([path["env_infos"] for path in paths])
             agent_infos = tensor_utils.concat_tensor_dict_list([path["agent_infos"] for path in paths])
@@ -80,15 +92,11 @@ class BaseSampler(Sampler):
 
             ent = np.mean(self.algo.policy.distribution.entropy(agent_infos))
 
-            ev = special.explained_variance_1d(
-                np.concatenate(baselines),
-                np.concatenate(returns)
-            )
-
             samples_data = dict(
                 observations=observations,
                 actions=actions,
                 rewards=rewards,
+                returns=returns,
                 advantages=advantages,
                 env_infos=env_infos,
                 agent_infos=agent_infos,
@@ -99,7 +107,7 @@ class BaseSampler(Sampler):
 
             # make all paths the same length (pad extra advantages with 0)
             obs = [path["observations"] for path in paths]
-            obs = np.array([tensor_utils.pad_tensor(ob, max_path_length) for ob in obs])
+            obs = tensor_utils.pad_tensor_n(obs, max_path_length)
 
             if self.algo.center_adv:
                 raw_adv = np.concatenate([path["advantages"] for path in paths])
@@ -109,13 +117,16 @@ class BaseSampler(Sampler):
             else:
                 adv = [path["advantages"] for path in paths]
 
-            adv = np.array([tensor_utils.pad_tensor(a, max_path_length) for a in adv])
+            adv = np.asarray([tensor_utils.pad_tensor(a, max_path_length) for a in adv])
 
             actions = [path["actions"] for path in paths]
-            actions = np.array([tensor_utils.pad_tensor(a, max_path_length) for a in actions])
+            actions = tensor_utils.pad_tensor_n(actions, max_path_length)
 
             rewards = [path["rewards"] for path in paths]
-            rewards = np.array([tensor_utils.pad_tensor(r, max_path_length) for r in rewards])
+            rewards = tensor_utils.pad_tensor_n(rewards, max_path_length)
+
+            returns = [path["returns"] for path in paths]
+            returns = tensor_utils.pad_tensor_n(returns, max_path_length)
 
             agent_infos = [path["agent_infos"] for path in paths]
             agent_infos = tensor_utils.stack_tensor_dict_list(
@@ -128,7 +139,7 @@ class BaseSampler(Sampler):
             )
 
             valids = [np.ones_like(path["returns"]) for path in paths]
-            valids = np.array([tensor_utils.pad_tensor(v, max_path_length) for v in valids])
+            valids = tensor_utils.pad_tensor_n(valids, max_path_length)
 
             average_discounted_return = \
                 np.mean([path["returns"][0] for path in paths])
@@ -137,16 +148,12 @@ class BaseSampler(Sampler):
 
             ent = np.sum(self.algo.policy.distribution.entropy(agent_infos) * valids) / np.sum(valids)
 
-            ev = special.explained_variance_1d(
-                np.concatenate(baselines),
-                np.concatenate(returns)
-            )
-
             samples_data = dict(
                 observations=obs,
                 actions=actions,
                 advantages=adv,
                 rewards=rewards,
+                returns=returns,
                 valids=valids,
                 agent_infos=agent_infos,
                 env_infos=env_infos,
@@ -154,7 +161,10 @@ class BaseSampler(Sampler):
             )
 
         logger.log("fitting baseline...")
-        self.algo.baseline.fit(paths)
+        if hasattr(self.algo.baseline, 'fit_with_samples'):
+            self.algo.baseline.fit_with_samples(paths, samples_data)
+        else:
+            self.algo.baseline.fit(paths)
         logger.log("fitted")
 
         logger.record_tabular('Iteration', itr)

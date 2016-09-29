@@ -1,5 +1,6 @@
 import numpy as np
 from rllab.misc import tensor_utils
+import time
 
 
 def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1):
@@ -27,6 +28,11 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1):
         o = next_o
         if animated:
             env.render()
+            timestep = 0.05
+            time.sleep(timestep / speedup)
+    if animated:
+        env.render(close=True)
+
     return dict(
         observations=tensor_utils.stack_tensor_list(observations),
         actions=tensor_utils.stack_tensor_list(actions),

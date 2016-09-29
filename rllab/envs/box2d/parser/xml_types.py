@@ -85,7 +85,7 @@ class XmlElem(object):
                 used_attrs.append(attr.name)
             if val is not None:
                 setattr(inst, name, val)
-        for attr in xml.attrib.keys():
+        for attr in list(xml.attrib.keys()):
             if attr not in used_attrs:
                 raise ValueError("Unrecognized attribute: %s" % attr)
         return inst

@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 from joblib.pool import MemmapingPool
 import multiprocessing as mp
 from rllab.misc import logger
@@ -29,7 +29,7 @@ class ProgBarCounter(object):
             self.cur_progress = new_progress
 
     def stop(self):
-        if not logger.get_log_tabular_only():
+        if self.pbar is not None and self.pbar.active:
             self.pbar.stop()
 
 
@@ -84,12 +84,20 @@ class StatefulPool(object):
 
     def run_map(self, runner, args_list):
         if self.n_parallel > 1:
-            return self.pool.map((_worker_run_map, runner, args) for args in args_list)
+            return self.pool.map(_worker_run_map, [(runner, args) for args in args_list])
         else:
             ret = []
             for args in args_list:
                 ret.append(runner(self.G, *args))
             return ret
+
+    def run_imap_unordered(self, runner, args_list):
+        if self.n_parallel > 1:
+            for x in self.pool.imap_unordered(_worker_run_map, [(runner, args) for args in args_list]):
+                yield x
+        else:
+            for args in args_list:
+                yield runner(self.G, *args)
 
     def run_collect(self, collect_once, threshold, args=None, show_prog_bar=True):
         """

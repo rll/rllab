@@ -11,12 +11,13 @@ def _worker_init(G, id):
     if singleton_pool.n_parallel > 1:
         import os
         os.environ['THEANO_FLAGS'] = 'device=cpu'
+        os.environ['CUDA_VISIBLE_DEVICES'] = ""
     G.worker_id = id
 
 
 def initialize(n_parallel):
     singleton_pool.initialize(n_parallel)
-    singleton_pool.run_each(_worker_init, [(id,) for id in xrange(singleton_pool.n_parallel)])
+    singleton_pool.run_each(_worker_init, [(id,) for id in range(singleton_pool.n_parallel)])
 
 
 def _get_scoped_G(G, scope):
@@ -69,13 +70,14 @@ def terminate_task(scope=None):
 
 
 def _worker_set_seed(_, seed):
+    logger.log("Setting seed to %d" % seed)
     ext.set_seed(seed)
 
 
 def set_seed(seed):
     singleton_pool.run_each(
         _worker_set_seed,
-        [(seed + i,) for i in xrange(singleton_pool.n_parallel)]
+        [(seed + i,) for i in range(singleton_pool.n_parallel)]
     )
 
 
@@ -83,6 +85,9 @@ def _worker_set_policy_params(G, params, scope=None):
     G = _get_scoped_G(G, scope)
     G.policy.set_param_values(params)
 
+def _worker_set_env_params(G,params,scope=None):
+    G = _get_scoped_G(G, scope)
+    G.env.set_param_values(params)
 
 def _worker_collect_one_path(G, max_path_length, scope=None):
     G = _get_scoped_G(G, scope)
@@ -94,6 +99,7 @@ def sample_paths(
         policy_params,
         max_samples,
         max_path_length=np.inf,
+        env_params=None,
         scope=None):
     """
     :param policy_params: parameters for the policy. This will be updated on each worker process
@@ -107,6 +113,11 @@ def sample_paths(
         _worker_set_policy_params,
         [(policy_params, scope)] * singleton_pool.n_parallel
     )
+    if env_params is not None:
+        singleton_pool.run_each(
+            _worker_set_env_params,
+            [(env_params, scope)] * singleton_pool.n_parallel
+        )
     return singleton_pool.run_collect(
         _worker_collect_one_path,
         threshold=max_samples,
@@ -133,7 +144,7 @@ def truncate_paths(paths, max_samples):
         last_path = paths.pop(-1)
         truncated_last_path = dict()
         truncated_len = len(last_path["rewards"]) - (total_n_samples - max_samples)
-        for k, v in last_path.iteritems():
+        for k, v in last_path.items():
             if k in ["observations", "actions", "rewards"]:
                 truncated_last_path[k] = tensor_utils.truncate_tensor_list(v, truncated_len)
             elif k in ["env_infos", "agent_infos"]:

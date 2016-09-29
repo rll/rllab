@@ -11,10 +11,10 @@ def compute_rect_vertices(fromp, to, radius):
         dy = (radius**2 - dx**2) ** 0.5
         dy *= -1 if (x1 - x2) * (y1 - y2) > 0 else 1
 
-    return ";".join(map(lambda r: ",".join(map(str, r)), [
+    return ";".join([",".join(map(str, r)) for r in [
       [x1 + dx, y1 + dy],
       [x2 + dx, y2 + dy],
       [x2 - dx, y2 - dy],
       [x1 - dx, y1 - dy],
-    ]))
+    ]])
 

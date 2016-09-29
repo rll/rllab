@@ -1,4 +1,4 @@
-name: rllab
+name: rllab3
 channels:
     - https://conda.anaconda.org/kne 
     - https://conda.binstar.org/tlatorre 
@@ -6,7 +6,7 @@ channels:
     - https://conda.anaconda.org/menpo
     - jjhelmus
 dependencies:
-    - python==2.7.10
+    - python==3.5.2
     - numpy==1.10.4
     - scipy
     - path.py
@@ -14,14 +14,17 @@ dependencies:
     - joblib==0.9.4
     - mako
     - ipywidgets
+    - numba
     - flask
     - pybox2d
     - pygame
     - h5py
     - matplotlib
-    - opencv
-    - tensorflow=0.9.0
+    - opencv3=3.1.0
+    - scikit-learn
+    - tensorflow=0.10.0rc0
     - pip:
+        - Pillow
         - atari-py
         - pyprind
         - ipdb
@@ -30,10 +33,17 @@ dependencies:
         - nose2
         - pyzmq
         - msgpack-python
+        - mujoco_py
         - cached_property
+        - line_profiler
+        - Cython
         - git+https://github.com/Theano/Theano.git@adfe319ce6b781083d8dc3200fb4481b00853791#egg=Theano
-        - git+https://github.com/Lasagne/Lasagne.git@19b9d958507e7300e355d7cd1a6bbff2c7726c07#egg=Lasagne
+        - git+https://github.com/neocxi/Lasagne.git@484866cf8b38d878e92d521be445968531646bb8#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
         - awscli
         - git+https://github.com/openai/gym.git
         - pyglet
+        - git+https://github.com/neocxi/prettytensor.git
+        - jupyter
+        - progressbar2
+        - chainer==1.15.0

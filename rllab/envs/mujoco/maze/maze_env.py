@@ -60,8 +60,8 @@ class MazeEnv(ProxyEnv, Serializable):
         self._init_torso_x = torso_x
         self._init_torso_y = torso_y
 
-        for i in xrange(len(structure)):
-            for j in xrange(len(structure[0])):
+        for i in range(len(structure)):
+            for j in range(len(structure[0])):
                 if str(structure[i][j]) == '1':
                     # offset all coordinates so that robot starts at the origin
                     ET.SubElement(
@@ -150,7 +150,7 @@ class MazeEnv(ProxyEnv, Serializable):
         wall_readings = np.zeros(self._n_bins)
         goal_readings = np.zeros(self._n_bins)
 
-        for ray_idx in xrange(self._n_bins):
+        for ray_idx in range(self._n_bins):
             ray_ori = ori - self._sensor_span * 0.5 + 1.0 * (2 * ray_idx + 1) / (2 * self._n_bins) * self._sensor_span
             ray_segments = []
             for seg in segments:
@@ -213,8 +213,8 @@ class MazeEnv(ProxyEnv, Serializable):
     def _find_goal_range(self):
         structure = self.__class__.MAZE_STRUCTURE
         size_scaling = self.__class__.MAZE_SIZE_SCALING
-        for i in xrange(len(structure)):
-            for j in xrange(len(structure[0])):
+        for i in range(len(structure)):
+            for j in range(len(structure[0])):
                 if structure[i][j] == 'g':
                     minx = j * size_scaling - size_scaling * 0.5 - self._init_torso_x
                     maxx = j * size_scaling + size_scaling * 0.5 - self._init_torso_x
@@ -226,8 +226,8 @@ class MazeEnv(ProxyEnv, Serializable):
         x, y = pos
         structure = self.__class__.MAZE_STRUCTURE
         size_scaling = self.__class__.MAZE_SIZE_SCALING
-        for i in xrange(len(structure)):
-            for j in xrange(len(structure[0])):
+        for i in range(len(structure)):
+            for j in range(len(structure[0])):
                 if structure[i][j] == 1:
                     minx = j * size_scaling - size_scaling * 0.5 - self._init_torso_x
                     maxx = j * size_scaling + size_scaling * 0.5 - self._init_torso_x

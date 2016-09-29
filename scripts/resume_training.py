@@ -1,5 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
+
 
 from rllab.sampler.utils import rollout
 from rllab.algos.batch_polopt import BatchPolopt
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         for k in excluded:
             if k in params:
                 del params[k]
-        for k, v in params.items():
+        for k, v in list(params.items()):
             if v is None:
                 del params[k]
         if args.log_dir is not None:

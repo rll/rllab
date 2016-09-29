@@ -303,14 +303,14 @@ From a python shell::
 # 08/10/24: more refactorizing
 # 10/03/09: upper bound exp(min(1,...)) for step-size control
 
-from __future__ import division
+
 # future is >= 3.0, this code has mainly been used with 2.6 & 2.7
-from __future__ import with_statement
+
 # only necessary for python 2.5 and not in heavy use
-from __future__ import print_function
+
 # available from python 2.6, code should also work without
-from __future__ import absolute_import
-from __future__ import unicode_literals
+
+
 # from __future__ import collections.MutableMapping
 # does not exist in future, otherwise Python 2.5 would work, since 0.91.01
 
@@ -318,7 +318,7 @@ import sys
 if not sys.version.startswith('2'):  # in python 3
     xrange = range
     raw_input = input
-    basestring = str
+    str = str
 else:
     input = raw_input  # in py2, input(x) == eval(raw_input(x))
 
@@ -523,7 +523,7 @@ meta_parameters = MetaParameters()
 #
 def rglen(ar):
     """shortcut for the iterator ``xrange(len(ar))``"""
-    return xrange(len(ar))
+    return range(len(ar))
 
 def is_feasible(x, f):
     """default to check feasibility, see also ``cma_default_options``"""
@@ -944,7 +944,7 @@ class BoundaryHandlerBase(object):
         if self.bounds is None or self.bounds[ib] is None:
             return array(dimension * [sign_ * np.Inf])
         res = []
-        for i in xrange(dimension):
+        for i in range(dimension):
             res.append(self.bounds[ib][min([i, len(self.bounds[ib]) - 1])])
             if res[-1] is None:
                 res[-1] = sign_ * np.Inf
@@ -994,7 +994,7 @@ class BoundaryHandlerBase(object):
                     l[i] = 1
             b = []  # bounds in different format
             try:
-                for i in xrange(max(l)):
+                for i in range(max(l)):
                     b.append([bounds[0][i] if i < l[0] else None,
                               bounds[1][i] if i < l[1] else None])
             except (TypeError, IndexError):
@@ -1242,7 +1242,7 @@ class BoundPenalty(BoundaryHandlerBase):
         # compute varis = sigma**2 * C_ii
         varis = es.sigma**2 * array(N * [es.C] if isscalar(es.C) else (# scalar case
                                 es.C if isscalar(es.C[0]) else  # diagonal matrix case
-                                [es.C[i][i] for i in xrange(N)]))  # full matrix case
+                                [es.C[i][i] for i in range(N)]))  # full matrix case
 
         # relative violation in geno-space
         dmean = (es.mean - es.gp.geno(self.repair(es.gp.pheno(es.mean)))) / varis**0.5
@@ -1432,11 +1432,11 @@ class BoxConstraintsLinQuadTransformation(BoxConstraintsTransformationBase):
         self._lb = array([self.bounds[min((i, max_i))][0]
                           if self.bounds[min((i, max_i))][0] is not None
                           else -np.Inf
-                          for i in xrange(length)], copy=False)
+                          for i in range(length)], copy=False)
         self._ub = array([self.bounds[min((i, max_i))][1]
                           if self.bounds[min((i, max_i))][1] is not None
                           else np.Inf
-                          for i in xrange(length)], copy=False)
+                          for i in range(length)], copy=False)
         lb = self._lb
         ub = self._ub
         # define added values for lower and upper bound
@@ -1878,7 +1878,7 @@ class GenoPheno(object):
             # therefore it is omitted
             if 1 < 3:
                 keys = sorted(self.fixed_values.keys())
-                x = array([x[i] for i in xrange(len(x)) if i not in keys],
+                x = array([x[i] for i in range(len(x)) if i not in keys],
                           copy=False)
         # repair injected solutions
         if repair is not None:
@@ -2235,7 +2235,7 @@ class CMAAdaptSigmaCSA(CMAAdaptSigmaBase):
             self.damps = es.opts['CSA_dampfac'] * 1  # * (1.1 - 1/(es.N+1)**0.5)
         if es.opts['verbose'] > 1 or self.disregard_length_setting or 11 < 3:
             print('SigmaCSA Parameters')
-            for k, v in self.__dict__.items():
+            for k, v in list(self.__dict__.items()):
                 print('  ', k, ':', v)
         self.ps = np.zeros(es.N)
         self._ps_updated_iteration = -1
@@ -2777,7 +2777,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         self.N_pheno = len(self.x0)
 
         self.sigma0 = sigma0
-        if isinstance(sigma0, basestring):
+        if isinstance(sigma0, str):
         # TODO: no real need here (do rather in fmin)
             self.sigma0 = eval(sigma0)  # like '1./N' or 'np.random.rand(1)[0]+1e-2'
         if np.size(self.sigma0) != 1 or np.shape(self.sigma0):
@@ -2786,7 +2786,7 @@ class CMAEvolutionStrategy(OOOptimizer):
 
         # extract/expand options
         N = self.N_pheno
-        assert isinstance(opts['fixed_variables'], (basestring, dict)) \
+        assert isinstance(opts['fixed_variables'], (str, dict)) \
             or opts['fixed_variables'] is None
         # TODO: in case of a string we need to eval the fixed_variables
         if isinstance(opts['fixed_variables'], dict):
@@ -3014,7 +3014,7 @@ class CMAEvolutionStrategy(OOOptimizer):
                 the estimated diagonal of the Jacobian.
                 """
                 eps = 1e-8 * (1 + abs(x)) if epsilon is None else epsilon
-                return (map(x + eps) - map(x - eps)) / (2 * eps)
+                return (list(map(x + eps)) - list(map(x - eps))) / (2 * eps)
             def grad_numerical_sym(x, func, epsilon=None):
                 """return symmetric numerical gradient of func : R^n -> R.
                 """
@@ -3206,7 +3206,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         if len(arz):  # should always be true
             # apply unconditional mirroring, is pretty obsolete
             if new_injections and self.sp.lam_mirr and self.opts['CMA_mirrormethod'] == 0:
-                for i in xrange(self.sp.lam_mirr):
+                for i in range(self.sp.lam_mirr):
                     if 2 * (i + 1) > len(arz):
                         if self.countiter < 4:
                             _print_warning("fewer mirrors generated than given in parameter setting (%d<%d)"
@@ -3458,7 +3458,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         if xmean is None:
             xmean = self.mean  # might have changed in self.ask
         X = []
-        for k in xrange(int(popsize)):
+        for k in range(int(popsize)):
             x, f = X_first.pop(0), None
             rejected = -1
             while rejected < 0 or not is_feasible(x, f):  # rejection sampling
@@ -3481,7 +3481,7 @@ class CMAEvolutionStrategy(OOOptimizer):
                 if is_feasible(x, f) and evaluations > 1:
                     f = aggregation([f] + [(func(x, *args) if kappa == 1 else
                                             func(xmean + kappa * length_normalizer * (x - xmean), *args))
-                                           for _i in xrange(int(evaluations - 1))])
+                                           for _i in range(int(evaluations - 1))])
                 if rejected + 1 % 1000 == 0:
                     print('  %d solutions rejected (f-value NaN or None) at iteration %d' %
                           (rejected, self.countiter))
@@ -3545,7 +3545,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         if number is None:
             number = self.sp.lam_mirr
         res = []
-        for i in xrange(1, number + 1):
+        for i in range(1, number + 1):
             res.append(self.mean_old - pop_sorted[-i])
         return res
 
@@ -3728,7 +3728,7 @@ class CMAEvolutionStrategy(OOOptimizer):
                 if len(check_points):
                     idx = check_points
             except:
-                idx = xrange(sp.popsize)
+                idx = range(sp.popsize)
 
             for k in idx:
                 self.repair_genotype(pop[k])
@@ -3802,7 +3802,7 @@ class CMAEvolutionStrategy(OOOptimizer):
                 if self.sp.neg.cmuexp:
                     tmp = (pop[-sp.neg.mu:] - mold) / (self.sigma * self.sigma_vec)
                     # normalize to constant length (seems preferable in several aspects)
-                    for i in xrange(tmp.shape[0]):
+                    for i in range(tmp.shape[0]):
                         tmp[i, :] *= N**0.5 / self.mahalanobis_norm(
                                  self.sigma_vec * tmp[i, :]) / self.sigma
                     self._Yneg *= 1 - self.sp.neg.cmuexp  # for some reason necessary?
@@ -3816,7 +3816,7 @@ class CMAEvolutionStrategy(OOOptimizer):
             else:  # separable/diagonal linear case
                 assert(c1 + cmu <= 1)
                 Z = np.zeros(N)
-                for k in xrange(sp.mu):
+                for k in range(sp.mu):
                     z = (pop[k] - mold) / (self.sigma * self.sigma_vec)  # TODO see above
                     Z += sp.weights[k] * z * z  # is 1-D
                 self.C = (1 - c1a - cmu) * self.C + c1 * self.pc * self.pc + cmu * Z
@@ -3907,7 +3907,7 @@ class CMAEvolutionStrategy(OOOptimizer):
             fbestever = self.best.f
         s = (' after %i restart' + ('s' if number_of_runs > 1 else '')) \
             % number_of_runs if number_of_runs else ''
-        for k, v in self.stop().items():
+        for k, v in list(self.stop().items()):
             print('termination on %s=%s%s' % (k, str(v), s +
                   (' (%s)' % time_str if time_str else '')))
 
@@ -4239,7 +4239,7 @@ class CMAEvolutionStrategy(OOOptimizer):
         if len(self.C.shape) <= 1:
             return None
         c = self.C.copy()
-        for i in xrange(c.shape[0]):
+        for i in range(c.shape[0]):
             fac = c[i, i]**0.5
             c[:, i] /= fac
             c[i, :] /= fac
@@ -4445,7 +4445,7 @@ class CMAOptions(dict):
     @staticmethod
     def defaults():
         """return a dictionary with default option values and description"""
-        return dict((str(k), str(v)) for k, v in cma_default_options.items())
+        return dict((str(k), str(v)) for k, v in list(cma_default_options.items()))
         # getting rid of the u of u"name" by str(u"name")
         # return dict(cma_default_options)
 
@@ -4545,7 +4545,7 @@ class CMAOptions(dict):
         if s is None:
             super(CMAOptions, self).__init__(CMAOptions.defaults())  # dict.__init__(self, CMAOptions.defaults()) should be the same
             # self = CMAOptions.defaults()
-        elif isinstance(s, basestring):
+        elif isinstance(s, str):
             super(CMAOptions, self).__init__(CMAOptions().match(s))
             # we could return here
         else:
@@ -4588,7 +4588,7 @@ class CMAOptions(dict):
         if val is not None:
             dic = {dict_or_str:val}
 
-        for key, val in dic.items():
+        for key, val in list(dic.items()):
             key = self.corrected_key(key)
             if key not in CMAOptions.defaults():
                 # TODO: find a better solution?
@@ -4675,9 +4675,9 @@ class CMAOptions(dict):
         if loc is None:
             loc = self  # TODO: this hack is not so useful: popsize could be there, but N is missing
         try:
-            if isinstance(val, basestring):
+            if isinstance(val, str):
                 val = val.split('#')[0].strip()  # remove comments
-                if isinstance(val, basestring) and \
+                if isinstance(val, str) and \
                         key.find('filename') < 0:
                         # and key.find('mindx') < 0:
                     val = eval(val, globals(), loc)
@@ -6033,7 +6033,7 @@ class CMADataLogger(BaseDataLogger):
         the new value
 
         """
-        if not nameprefix or not isinstance(nameprefix, basestring):
+        if not nameprefix or not isinstance(nameprefix, str):
             raise _Error('filename prefix must be a nonempty string')
 
         if nameprefix == self.default_prefix:
@@ -6439,7 +6439,7 @@ class CMADataLogger(BaseDataLogger):
         for istart in start_idx:
             istop = stop_idx[stop_idx > istart]
             istop = istop[0] if len(istop) else 0
-            idx = xrange(istart, istop if istop else dat.f.shape[0])
+            idx = range(istart, istop if istop else dat.f.shape[0])
             if len(idx) > 1:
                 semilogy(dat.f[idx, iabscissa], abs(dat.f[idx, 5]) + foffset,
                         'm')  # , markersize=5
@@ -7058,9 +7058,9 @@ class NoiseHandler(object):
                     self.fitre[i] = fagg(func(ask(evals, X_i, self.epsilon), *args))
                 else:
                     self.fitre[i] = fagg([func(ask(1, X_i, self.epsilon)[0], *args)
-                                            for _k in xrange(evals)])
+                                            for _k in range(evals)])
             else:
-                self.fitre[i] = fagg([func(X_i, *args) for _k in xrange(evals)])
+                self.fitre[i] = fagg([func(X_i, *args) for _k in range(evals)])
         self.evaluations_just_done = evals * len(self.idx)
         return self.fit, self.fitre, self.idx
 
@@ -7229,7 +7229,7 @@ class Sections(object):
             return
 
         res = self.res
-        for i in xrange(len(self.basis)):  # i-th coordinate
+        for i in range(len(self.basis)):  # i-th coordinate
             if i not in res:
                 res[i] = {}
             # xx = np.array(self.x)
@@ -7475,12 +7475,12 @@ class Misc(object):
                 l = 0
 
             if l == 0:
-                return array([Mh.cauchy_with_variance_one() for _i in xrange(size)])
+                return array([Mh.cauchy_with_variance_one() for _i in range(size)])
             elif l == 1:
-                return array([Mh.cauchy_with_variance_one() for _i in xrange(size[0])])
+                return array([Mh.cauchy_with_variance_one() for _i in range(size[0])])
             elif l == 2:
-                return array([[Mh.cauchy_with_variance_one() for _i in xrange(size[1])]
-                             for _j in xrange(size[0])])
+                return array([[Mh.cauchy_with_variance_one() for _i in range(size[1])]
+                             for _j in range(size[0])])
             else:
                 raise _Error('len(size) cannot be large than two')
 
@@ -7595,24 +7595,24 @@ class Misc(object):
 
             num_opt = False  # factor 1.5 in 30-D
 
-            for j in xrange(n):
+            for j in range(n):
                 d[j] = V[n - 1][j]  # d is output argument
 
             # Householder reduction to tridiagonal form.
 
-            for i in xrange(n - 1, 0, -1):
+            for i in range(n - 1, 0, -1):
                 # Scale to avoid under/overflow.
                 h = 0.0
                 if not num_opt:
                     scale = 0.0
-                    for k in xrange(i):
+                    for k in range(i):
                         scale = scale + abs(d[k])
                 else:
                     scale = sum(abs(d[0:i]))
 
                 if scale == 0.0:
                     e[i] = d[i - 1]
-                    for j in xrange(i):
+                    for j in range(i):
                         d[j] = V[i - 1][j]
                         V[i][j] = 0.0
                         V[j][i] = 0.0
@@ -7620,7 +7620,7 @@ class Misc(object):
 
                     # Generate Householder vector.
                     if not num_opt:
-                        for k in xrange(i):
+                        for k in range(i):
                             d[k] /= scale
                             h += d[k] * d[k]
                     else:
@@ -7637,19 +7637,19 @@ class Misc(object):
                     h = h - f * g
                     d[i - 1] = f - g
                     if not num_opt:
-                        for j in xrange(i):
+                        for j in range(i):
                             e[j] = 0.0
                     else:
                         e[:i] = 0.0
 
                     # Apply similarity transformation to remaining columns.
 
-                    for j in xrange(i):
+                    for j in range(i):
                         f = d[j]
                         V[j][i] = f
                         g = e[j] + V[j][j] * f
                         if not num_opt:
-                            for k in xrange(j + 1, i):
+                            for k in range(j + 1, i):
                                 g += V[k][j] * d[k]
                                 e[k] += V[k][j] * f
                             e[j] = g
@@ -7659,7 +7659,7 @@ class Misc(object):
 
                     f = 0.0
                     if not num_opt:
-                        for j in xrange(i):
+                        for j in range(i):
                             e[j] /= h
                             f += e[j] * d[j]
                     else:
@@ -7668,16 +7668,16 @@ class Misc(object):
 
                     hh = f / (h + h)
                     if not num_opt:
-                        for j in xrange(i):
+                        for j in range(i):
                             e[j] -= hh * d[j]
                     else:
                         e[:i] -= hh * d[:i]
 
-                    for j in xrange(i):
+                    for j in range(i):
                         f = d[j]
                         g = e[j]
                         if not num_opt:
-                            for k in xrange(j, i):
+                            for k in range(j, i):
                                 V[k][j] -= (f * e[k] + g * d[k])
                         else:
                             V.T[j][j:i] -= (f * e[j:i] + g * d[j:i])
@@ -7690,37 +7690,37 @@ class Misc(object):
 
             # Accumulate transformations.
 
-            for i in xrange(n - 1):
+            for i in range(n - 1):
                 V[n - 1][i] = V[i][i]
                 V[i][i] = 1.0
                 h = d[i + 1]
                 if h != 0.0:
                     if not num_opt:
-                        for k in xrange(i + 1):
+                        for k in range(i + 1):
                             d[k] = V[k][i + 1] / h
                     else:
                         d[:i + 1] = V.T[i + 1][:i + 1] / h
 
-                    for j in xrange(i + 1):
+                    for j in range(i + 1):
                         if not num_opt:
                             g = 0.0
-                            for k in xrange(i + 1):
+                            for k in range(i + 1):
                                 g += V[k][i + 1] * V[k][j]
-                            for k in xrange(i + 1):
+                            for k in range(i + 1):
                                 V[k][j] -= g * d[k]
                         else:
                             g = np.dot(V.T[i + 1][0:i + 1], V.T[j][0:i + 1])
                             V.T[j][:i + 1] -= g * d[:i + 1]
 
                 if not num_opt:
-                    for k in xrange(i + 1):
+                    for k in range(i + 1):
                         V[k][i + 1] = 0.0
                 else:
                     V.T[i + 1][:i + 1] = 0.0
 
 
             if not num_opt:
-                for j in xrange(n):
+                for j in range(n):
                     d[j] = V[n - 1][j]
                     V[n - 1][j] = 0.0
             else:
@@ -7744,7 +7744,7 @@ class Misc(object):
             num_opt = False  # using vectors from numpy makes it faster
 
             if not num_opt:
-                for i in xrange(1, n):  # (int i = 1; i < n; i++):
+                for i in range(1, n):  # (int i = 1; i < n; i++):
                     e[i - 1] = e[i]
             else:
                 e[0:n - 1] = e[1:n]
@@ -7753,7 +7753,7 @@ class Misc(object):
             f = 0.0
             tst1 = 0.0
             eps = 2.0**-52.0
-            for l in xrange(n):  # (int l = 0; l < n; l++) {
+            for l in range(n):  # (int l = 0; l < n; l++) {
 
                 # Find small subdiagonal element
 
@@ -7785,7 +7785,7 @@ class Misc(object):
                         dl1 = d[l + 1]
                         h = g - d[l]
                         if not num_opt:
-                            for i in xrange(l + 2, n):
+                            for i in range(l + 2, n):
                                 d[i] -= h
                         else:
                             d[l + 2:n] -= h
@@ -7803,7 +7803,7 @@ class Misc(object):
                         s2 = 0.0
 
                         # hh = V.T[0].copy()  # only with num_opt
-                        for i in xrange(m - 1, l - 1, -1):  # (int i = m-1; i >= l; i--) {
+                        for i in range(m - 1, l - 1, -1):  # (int i = m-1; i >= l; i--) {
                             c3 = c2
                             c2 = c
                             s2 = s
@@ -7819,7 +7819,7 @@ class Misc(object):
                             # Accumulate transformation.
 
                             if not num_opt:  # overall factor 3 in 30-D
-                                for k in xrange(n):  # (int k = 0; k < n; k++) {
+                                for k in range(n):  # (int k = 0; k < n; k++) {
                                     h = V[k][i + 1]
                                     V[k][i + 1] = s * V[k][i] + c * h
                                     V[k][i] = c * V[k][i] - s * h
@@ -7849,7 +7849,7 @@ class Misc(object):
 
         N = len(C[0])
         if 1 < 3:
-            V = [[x[i] for i in xrange(N)] for x in C]  # copy each "row"
+            V = [[x[i] for i in range(N)] for x in C]  # copy each "row"
             d = N * [0.]
             e = N * [0.]
 
@@ -7871,10 +7871,10 @@ def pprint(to_be_printed):
     except ImportError:
         if isinstance(to_be_printed, dict):
             print('{')
-            for k, v in to_be_printed.items():
-                print("'" + k + "'" if isinstance(k, basestring) else k,
+            for k, v in list(to_be_printed.items()):
+                print("'" + k + "'" if isinstance(k, str) else k,
                       ': ',
-                      "'" + v + "'" if isinstance(k, basestring) else v,
+                      "'" + v + "'" if isinstance(k, str) else v,
                       sep="")
             print('}')
         else:
@@ -7961,8 +7961,8 @@ class Rotation(object):
             rstate = np.random.get_state()
             np.random.seed(self.seed) if self.seed else np.random.seed()
             B = np.random.randn(N, N)
-            for i in xrange(N):
-                for j in xrange(0, i):
+            for i in range(N):
+                for j in range(0, i):
                     B[i] -= np.dot(B[i], B[j]) * B[j]
                 B[i] /= sum(B[i]**2)**0.5
             self.dicMatrices[str(N)] = B
@@ -8133,7 +8133,7 @@ class FFWrapper(object):
             y = np.zeros(len(x) + len(self.index_value_pairs))
             assert len(y) > max(self.index_value_pairs)
             j = 0
-            for i in xrange(len(y)):
+            for i in range(len(y)):
                 if i in self.index_value_pairs:
                     y[i] = self.index_value_pairs[i]
                 else:
@@ -8288,7 +8288,7 @@ class FitnessFunctions(object):
         self.counter += 1
         # return np.random.rand(1)[0]**0 * sum(x**2) + 1 * np.random.rand(1)[0]
         dim = len(x)
-        x = array([x[i % dim] for i in xrange(2 * dim)])
+        x = array([x[i % dim] for i in range(2 * dim)])
         N = 8
         i = self.counter % dim
         # f = sum(x[i:i + N]**2)
@@ -8545,7 +8545,7 @@ class FitnessFunctions(object):
         # ((8 * np.sin(7 * (x[i] - 0.9)**2)**2 ) + (6 * np.sin()))
         res = np.sum((x[i - 1] + 10 * x[i])**2 + 5 * (x[i + 1] - x[i + 2])**2 +
                      (x[i] - 2 * x[i + 1])**4 + 10 * (x[i - 1] - x[i + 2])**4
-                     for i in xrange(1, len(x) - 2))
+                     for i in range(1, len(x) - 2))
         return 1 + res
     def styblinski_tang(self, x):
         """in [-5, 5]
@@ -8563,7 +8563,7 @@ class FitnessFunctions(object):
 
         http://en.wikipedia.org/wiki/Test_functions_for_optimization"""
         s = 0
-        for k in xrange((1+len(x)) // 2):
+        for k in range((1+len(x)) // 2):
             z = x[2 * k]
             y = x[min((2*k + 1, len(x)-1))]
             s += 100 * np.abs(y - 0.01 * z**2)**0.5 + 0.01 * np.abs(z + 10)
@@ -8758,7 +8758,7 @@ def main(argv=None):
             fun = None
         elif argv[1] in ('plot',):
             plot(name=argv[2] if len(argv) > 2 else None)
-            raw_input('press return')
+            input('press return')
             fun = None
         elif len(argv) > 3:
             fun = eval('fcts.' + argv[1])
@@ -8774,7 +8774,7 @@ def main(argv=None):
             sig0 = eval(argv[3])
 
         opts = {}
-        for i in xrange(5, len(argv), 2):
+        for i in range(5, len(argv), 2):
             opts[argv[i - 1]] = eval(argv[i])
 
         # run fmin

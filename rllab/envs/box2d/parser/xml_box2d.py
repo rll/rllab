@@ -178,7 +178,7 @@ class XmlFixture(XmlElem):
             m = 100
             vs = [
                 (0.5/m*i*self.width, self.height*np.sin((1./m*i-0.5)*np.pi))
-                for i in xrange(-m, m+1)
+                for i in range(-m, m+1)
             ]
             attrs["vertices_chain"] = vs
             fixture = body.CreateChainFixture(**attrs)

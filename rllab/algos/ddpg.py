@@ -7,7 +7,7 @@ from rllab.plotter import plotter
 from functools import partial
 import rllab.misc.logger as logger
 import theano.tensor as TT
-import cPickle as pickle
+import pickle as pickle
 import numpy as np
 import pyprind
 import lasagne
@@ -124,7 +124,7 @@ class DDPG(RLAlgorithm):
         :param min_pool_size: Minimum size of the pool to start training.
         :param replay_pool_size: Size of the experience replay pool.
         :param discount: Discount factor for the cumulative return.
-        :param max_path_length: Maximum length of the trajectory.
+        :param max_path_length: Discount factor for the cumulative return.
         :param qf_weight_decay: Weight decay factor for parameters of the Q function.
         :param qf_update_method: Online optimization method for training Q function.
         :param qf_learning_rate: Learning rate for training Q function.
@@ -209,10 +209,10 @@ class DDPG(RLAlgorithm):
 
         sample_policy = pickle.loads(pickle.dumps(self.policy))
 
-        for epoch in xrange(self.n_epochs):
+        for epoch in range(self.n_epochs):
             logger.push_prefix('epoch #%d | ' % epoch)
             logger.log("Training started")
-            for epoch_itr in pyprind.prog_bar(xrange(self.epoch_length)):
+            for epoch_itr in pyprind.prog_bar(range(self.epoch_length)):
                 # Execute policy
                 if terminal:  # or path_length > self.max_path_length:
                     # Note that if the last time step ends an episode, the very
@@ -234,23 +234,14 @@ class DDPG(RLAlgorithm):
                     terminal = True
                     # only include the terminal transition in this case if the flag was set
                     if self.include_horizon_terminal_transitions:
-                        pool.add_sample(
-                            self.env.observation_space.flatten(observation),
-                            self.env.action_space.flatten(action),
-                            reward * self.scale_reward,
-                            terminal
-                        )
+                        pool.add_sample(observation, action, reward * self.scale_reward, terminal)
                 else:
-                    pool.add_sample(
-                        self.env.observation_space.flatten(observation),
-                        self.env.action_space.flatten(action),
-                        reward * self.scale_reward,
-                        terminal
-                    )
+                    pool.add_sample(observation, action, reward * self.scale_reward, terminal)
+
                 observation = next_observation
 
                 if pool.size >= self.min_pool_size:
-                    for update_itr in xrange(self.n_updates_per_sample):
+                    for update_itr in range(self.n_updates_per_sample):
                         # Train policy
                         batch = pool.random_batch(self.batch_size)
                         self.do_training(itr, batch)
@@ -268,7 +259,7 @@ class DDPG(RLAlgorithm):
             if self.plot:
                 self.update_plot()
                 if self.pause_for_plot:
-                    raw_input("Plotting evaluation run: Press Enter to "
+                    input("Plotting evaluation run: Press Enter to "
                               "continue...")
         self.env.terminate()
         self.policy.terminate()

@@ -1,4 +1,5 @@
 from rllab.core.serializable import Serializable
+from rllab.spaces.base import Space
 
 
 class EnvSpec(Serializable):
@@ -7,6 +8,10 @@ class EnvSpec(Serializable):
             self,
             observation_space,
             action_space):
+        """
+        :type observation_space: Space
+        :type action_space: Space
+        """
         Serializable.quick_init(self, locals())
         self._observation_space = observation_space
         self._action_space = action_space

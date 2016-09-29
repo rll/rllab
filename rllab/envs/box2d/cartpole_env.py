@@ -15,6 +15,7 @@ class CartpoleEnv(Box2DEnv, Serializable):
         self.max_cart_pos = 2.4
         self.max_cart_speed = 4.
         self.max_pole_speed = 4.
+        self.reset_range = 0.05
         super(CartpoleEnv, self).__init__(
             self.model_path("cartpole.xml.mako"),
             *args, **kwargs
@@ -33,7 +34,7 @@ class CartpoleEnv(Box2DEnv, Serializable):
             self.max_pole_angle,
             self.max_pole_speed
         ])
-        low, high = -0.05*bounds, 0.05*bounds
+        low, high = -self.reset_range*bounds, self.reset_range*bounds
         xpos, xvel, apos, avel = np.random.uniform(low, high)
         self.cart.position = (xpos, self.cart.position[1])
         self.cart.linearVelocity = (xvel, self.cart.linearVelocity[1])

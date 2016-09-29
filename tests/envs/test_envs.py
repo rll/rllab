@@ -85,7 +85,7 @@ envs.append(
 
 @tools.params(*envs)
 def test_env(env):
-    print "Testing", env.__class__
+    print("Testing", env.__class__)
     ob_space = env.observation_space
     act_space = env.action_space
     ob = env.reset()

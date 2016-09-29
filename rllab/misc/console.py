@@ -5,6 +5,7 @@ import errno
 import shlex
 import pydoc
 import inspect
+import collections
 
 color2num = dict(
     gray=30,
@@ -41,7 +42,7 @@ def mkdir_p(path):
 
 
 def log(s):  # , send_telegram=False):
-    print s
+    print(s)
     sys.stdout.flush()
 
 
@@ -52,7 +53,7 @@ class SimpleMessage(object):
         self.logger = logger
 
     def __enter__(self):
-        print self.msg
+        print(self.msg)
         self.tstart = time.time()
 
     def __exit__(self, etype, *args):
@@ -71,7 +72,7 @@ class Message(object):
 
     def __enter__(self):
         global MESSAGE_DEPTH  # pylint: disable=W0603
-        print colorize('\t' * MESSAGE_DEPTH + '=: ' + self.msg, 'magenta')
+        print(colorize('\t' * MESSAGE_DEPTH + '=: ' + self.msg, 'magenta'))
         self.tstart = time.time()
         MESSAGE_DEPTH += 1
 
@@ -79,7 +80,7 @@ class Message(object):
         global MESSAGE_DEPTH  # pylint: disable=W0603
         MESSAGE_DEPTH -= 1
         maybe_exc = "" if etype is None else " (with exception)"
-        print colorize('\t' * MESSAGE_DEPTH + "done%s in %.3f seconds" % (maybe_exc, time.time() - self.tstart), 'magenta')
+        print(colorize('\t' * MESSAGE_DEPTH + "done%s in %.3f seconds" % (maybe_exc, time.time() - self.tstart), 'magenta'))
 
 
 def prefix_log(prefix, logger=log):
@@ -114,7 +115,7 @@ def type_hint(arg_name, arg_type):
 
 
 def tweak(fun_or_val, identifier=None):
-    if callable(fun_or_val):
+    if isinstance(fun_or_val, collections.Callable):
         return tweakfun(fun_or_val, identifier)
     return tweakval(fun_or_val, identifier)
 
@@ -123,7 +124,7 @@ def tweakval(val, identifier):
     if not identifier:
         raise ValueError('Must provide an identifier for tweakval to work')
     args = collect_args()
-    for k, v in args.iteritems():
+    for k, v in args.items():
         stripped = k.replace('-', '_')
         if stripped == identifier:
             log('replacing %s in %s with %s' % (stripped, str(val), str(v)))
@@ -157,14 +158,14 @@ def tweakfun(fun, alt=None):
         argspec = inspect.getargspec(fun)
     # TODO handle list arguments
     defaults = dict(
-        zip(argspec.args[-len(argspec.defaults or []):], argspec.defaults or []))
+        list(zip(argspec.args[-len(argspec.defaults or []):], argspec.defaults or [])))
     replaced_kwargs = {}
     cmd_prefix += '-'
     if type(fun) == type:
         meta = getattr(fun.__init__, '__tweak_type_hint_meta__', {})
     else:
         meta = getattr(fun, '__tweak_type_hint_meta__', {})
-    for k, v in args.iteritems():
+    for k, v in args.items():
         if k.startswith(cmd_prefix):
             stripped = k[len(cmd_prefix):].replace('-', '_')
             if stripped in meta:
@@ -185,9 +186,40 @@ def tweakfun(fun, alt=None):
                 replaced_kwargs[stripped] = type(defaults[stripped])(v)
 
     def tweaked(*args, **kwargs):
-        all_kw = dict(zip(argspec[0], args) +
-                      kwargs.items() + replaced_kwargs.items())
+        all_kw = dict(list(zip(argspec[0], args)) +
+                      list(kwargs.items()) + list(replaced_kwargs.items()))
         return fun(**all_kw)
     return tweaked
 
 
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")

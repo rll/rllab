@@ -10,7 +10,6 @@ from rllab.core.network import GRUNetwork
 from rllab.core.serializable import Serializable
 from rllab.distributions.recurrent_diagonal_gaussian import RecurrentDiagonalGaussian
 from rllab.misc import ext
-from rllab.spaces import Discrete
 from rllab.misc.overrides import overrides
 from rllab.policies.base import StochasticPolicy
 
@@ -48,7 +47,7 @@ class GaussianGRUPolicy(StochasticPolicy, LasagnePowered, Serializable):
             output_dim=action_dim,
             hidden_dim=hidden_sizes[0],
             hidden_nonlinearity=hidden_nonlinearity,
-            output_nonlinearity=NL.softmax,
+            output_nonlinearity=output_nonlinearity,
         )
 
         l_mean = mean_network.output_layer
@@ -134,7 +133,7 @@ class GaussianGRUPolicy(StochasticPolicy, LasagnePowered, Serializable):
             # should not be used
             prev_action = np.nan
         mean, log_std, hidden_vec = [x[0] for x in self._f_step_mean_std([all_input], [self._prev_hidden])]
-        rnd = np.random.randn(len(mean))
+        rnd = np.random.normal(size=mean.shape)
         action = rnd * np.exp(log_std) + mean
         self._prev_action = action
         self._prev_hidden = hidden_vec

@@ -17,20 +17,24 @@ class LbfgsOptimizer(Serializable):
         self._target = None
         self._callback = callback
 
-    def update_opt(self, loss, target, inputs, extra_inputs=None, *args, **kwargs):
+    def update_opt(self, loss, target, inputs, extra_inputs=None, gradients=None, *args, **kwargs):
         """
         :param loss: Symbolic expression for the loss function.
         :param target: A parameterized object to optimize over. It should implement methods of the
         :class:`rllab.core.paramerized.Parameterized` class.
         :param leq_constraint: A constraint provided as a tuple (f, epsilon), of the form f(*inputs) <= epsilon.
         :param inputs: A list of symbolic variables as inputs
+        :param gradients: symbolic expressions for the gradients of trainable parameters of the target. By default
+        this will be computed by calling theano.grad
         :return: No return value.
         """
 
         self._target = target
 
-        def get_opt_output():
-            flat_grad = flatten_tensor_variables(theano.grad(loss, target.get_params(trainable=True)))
+        def get_opt_output(gradients):
+            if gradients is None:
+                gradients = theano.grad(loss, target.get_params(trainable=True))
+            flat_grad = flatten_tensor_variables(gradients)
             return [loss.astype('float64'), flat_grad.astype('float64')]
 
         if extra_inputs is None:
@@ -40,7 +44,7 @@ class LbfgsOptimizer(Serializable):
             f_loss=lambda: compile_function(inputs + extra_inputs, loss),
             f_opt=lambda: compile_function(
                 inputs=inputs + extra_inputs,
-                outputs=get_opt_output(),
+                outputs=get_opt_output(gradients),
             )
         )
 
