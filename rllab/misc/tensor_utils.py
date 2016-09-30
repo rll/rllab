@@ -16,10 +16,13 @@ def unflatten_tensors(flattened, tensor_shapes):
     return [np.reshape(pair[0], pair[1]) for pair in zip(np.split(flattened, indices), tensor_shapes)]
 
 
-def pad_tensor(x, max_len):
+def pad_tensor(x, max_len, mode='zero'):
+    padding = np.zeros_like(x[0])
+    if mode == 'last':
+        padding = x[-1]
     return np.concatenate([
         x,
-        np.tile(np.zeros_like(x[0]), (max_len - len(x),) + (1,) * np.ndim(x[0]))
+        np.tile(padding, (max_len - len(x),) + (1,) * np.ndim(x[0]))
     ])
 
 
@@ -30,14 +33,14 @@ def pad_tensor_n(xs, max_len):
     return ret
 
 
-def pad_tensor_dict(tensor_dict, max_len):
+def pad_tensor_dict(tensor_dict, max_len, mode='zero'):
     keys = list(tensor_dict.keys())
     ret = dict()
     for k in keys:
         if isinstance(tensor_dict[k], dict):
-            ret[k] = pad_tensor_dict(tensor_dict[k], max_len)
+            ret[k] = pad_tensor_dict(tensor_dict[k], max_len, mode=mode)
         else:
-            ret[k] = pad_tensor(tensor_dict[k], max_len)
+            ret[k] = pad_tensor(tensor_dict[k], max_len, mode=mode)
     return ret
 
 

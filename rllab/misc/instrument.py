@@ -464,6 +464,7 @@ def run_experiment_lite(
                 script=script,
                 env=env,
                 use_gpu=use_gpu,
+                use_tty=True,
             )
             print(command)
             if dry:
@@ -613,7 +614,7 @@ def to_local_command(params, python_command="python", script=osp.join(config.PRO
 
 
 def to_docker_command(params, docker_image, python_command="python", script='scripts/run_experiment.py',
-                      pre_commands=None,
+                      pre_commands=None, use_tty=False,
                       post_commands=None, dry=False, use_gpu=False, env=None, local_code_dir=None):
     """
     :param params: The parameters for the experiment. If logging directory parameters are provided, we will create
@@ -648,7 +649,10 @@ def to_docker_command(params, docker_image, python_command="python", script='scr
         docker_code_dir=config.DOCKER_CODE_DIR
     )
     params = dict(params, log_dir=docker_log_dir)
-    command_prefix += " -ti " + docker_image + " /bin/bash -c "
+    if use_tty:
+        command_prefix += " -ti " + docker_image + " /bin/bash -c "
+    else:
+        command_prefix += " -i " + docker_image + " /bin/bash -c "
     command_list = list()
     if pre_commands is not None:
         command_list.extend(pre_commands)

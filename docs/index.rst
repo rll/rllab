@@ -24,6 +24,7 @@ The rllab user guide explains how to install rllab, how to run experiments, and 
    user/implement_env
    user/implement_algo_basic
    user/implement_algo_advanced
+   user/cluster
 
 
 Citing rllab

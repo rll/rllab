@@ -35,7 +35,7 @@ The script sets up a conda environment, which is similar to :code:`virtualenv`. 
 
 .. code-block:: bash
 
-    source activate rllab
+    source activate rllab3
 
 
 Optionally, if you would like to run experiments that depends on the Mujoco environment, you can set it up by running the following command:
