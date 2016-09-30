@@ -1,6 +1,8 @@
 FROM neocxi/rllab_exp_gpu_tf:py3
 
-RUN /opt/conda/envs/rllab3/bin/conda install nomkl
+RUN /opt/conda/envs/rllab3/bin/conda install -y nomkl && \
+    /opt/conda/envs/rllab3/bin/conda uninstall -y scipy && \
+    /opt/conda/envs/rllab3/bin/conda install -y scipy
 
 ADD . /root/code/rllab
 WORKDIR /root/code/rllab

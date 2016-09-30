@@ -9,7 +9,22 @@ rllab comes with support for running jobs on EC2 cluster. Here are the steps to 
 
 1. Create an AWS account at `https://aws.amazon.com/ <https://aws.amazon.com/>`_. You need to supply a valid credit card (or set up consolidated billing to link your account to a shared payer account) before running experiments.
    
-2. After signing up, Go to the `Management Console <https://console.aws.amazon.com/iam/home?region=us-west-1#security_credential>`_, click on `Access Keys`, and create a new access key. Save the downloaded :code:`root_key.csv` file somewhere.
+2. After signing up, go to the Security Credentials console, click on the "Access Keys" tab, and create a new access key. If prompted with "You are accessing the security credentials page for your AWS account. The account credentials provide unlimited access to your AWS resources," click "Continue to Security Credentials". Save the downloaded :code:`root_key.csv` file somewhere.  
+
+.. figure:: cluster_1.png
+    :align: center
+
+    Click on the Security Credentials tab.
+
+.. figure:: cluster_2.png
+    :align: center
+
+    Click "Continue to Security Credentials" if prompted. Then, click the Acces Keys tab.
+
+.. figure:: cluster_3.png
+    :align: center
+
+    Click "Create New Access Key". Then download the key file.
 
 3. Set up environment variables. On Linux / Mac OS X, edit your :code:`~/.bash_profile` and add the following environment variables:
 
