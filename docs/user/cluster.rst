@@ -30,14 +30,12 @@ For :code:`RLLAB_S3_BUCKET`, come up with a name for the S3 bucket used to store
     aws_access_key_id = (your access key)
     aws_secret_access_key = (your access secret)
 
-5. Make sure rllab is set up as usual.
-
-6. Open a new terminal to make sure that the environment variables configured are in effect. Also make sure you are using the Py3 version of the environment (:code:`source activate rllab3`). Then, run the set up script:
+5. Open a new terminal to make sure that the environment variables configured are in effect. Also make sure you are using the Py3 version of the environment (:code:`source activate rllab3`). Then, run the setup script:
 
 .. code-block:: bash
 
     python scripts/setup_ec2_for_rllab.py
 
-7. If the script runs fine, you've fully set up rllab for use on EC2! Try running :code:`examples/cluster_demo.py` to launch a single experiment on EC2. If it succeeds, you can then comment out the last line :code:`sys.exit()` to launch the whole set of 15 experiments, each on an individual machine running in parallel. You can sign in to the EC2 panel to `view spot instance requests status <https://us-west-1.console.aws.amazon.com/ec2sp/v1/spot/home?region=us-west-1>`_ or `running instances <https://us-west-1.console.aws.amazon.com/ec2/v2/home?region=us-west-1#Instances:sort=desc:instanceId>`_.
+6. If the script runs fine, you've fully set up rllab for use on EC2! Try running :code:`examples/cluster_demo.py` to launch a single experiment on EC2. If it succeeds, you can then comment out the last line :code:`sys.exit()` to launch the whole set of 15 experiments, each on an individual machine running in parallel. You can sign in to the EC2 panel to `view spot instance requests status <https://us-west-1.console.aws.amazon.com/ec2sp/v1/spot/home?region=us-west-1>`_ or `running instances <https://us-west-1.console.aws.amazon.com/ec2/v2/home?region=us-west-1#Instances:sort=desc:instanceId>`_.
 
-8. While the experiments are running (or when they are finished), use :code:`python scripts/sync_s3.py first-exp` to download stats collected by the experiments. You can then run :code:`python rllab/viskit/frontend.py data/s3/first-exp` and navigate to `http://localhost:5000 <http://localhost:5000>`_ to view the results.
+7. While the experiments are running (or when they are finished), use :code:`python scripts/sync_s3.py first-exp` to download stats collected by the experiments. You can then run :code:`python rllab/viskit/frontend.py data/s3/first-exp` and navigate to `http://localhost:5000 <http://localhost:5000>`_ to view the results.
