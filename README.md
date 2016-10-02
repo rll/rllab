@@ -21,7 +21,7 @@ rllab is fully compatible with [OpenAI Gym](https://gym.openai.com/). See [here]
 
 rllab only officially supports Python 3.5+. For an older snapshot of rllab sitting on Python 2, please use the [py2 branch](https://github.com/rllab/rllab/tree/py2).
 
-rllab comes with support for running reinforcement learning experiments on an EC2 cluster, and tools for visualizing the results. See the [documentation](https://rllab.readthedocs.io/en/latest/user/cluster.htm://rllab.readthedocs.io/en/latest/user/cluster.html) for details.
+rllab comes with support for running reinforcement learning experiments on an EC2 cluster, and tools for visualizing the results. See the [documentation](https://rllab.readthedocs.io/en/latest/user/cluster.html) for details.
 
 # Documentation
 
