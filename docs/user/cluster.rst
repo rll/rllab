@@ -45,6 +45,8 @@ For :code:`RLLAB_S3_BUCKET`, come up with a name for the S3 bucket used to store
     aws_access_key_id = (your access key)
     aws_secret_access_key = (your access secret)
 
+Note that there should not be quotes around the keys / secrets!
+
 5. Open a new terminal to make sure that the environment variables configured are in effect. Also make sure you are using the Py3 version of the environment (:code:`source activate rllab3`). Then, run the setup script:
 
 .. code-block:: bash
