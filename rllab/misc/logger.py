@@ -253,29 +253,28 @@ def log_parameters(log_file, args, classes):
 
 def stub_to_json(stub_sth):
     from rllab.misc import instrument
-    from rllab.misc import instrument2
-    if isinstance(stub_sth, instrument.StubObject) or isinstance(stub_sth, instrument2.StubObject):
+    if isinstance(stub_sth, instrument.StubObject):
         assert len(stub_sth.args) == 0
         data = dict()
         for k, v in stub_sth.kwargs.items():
             data[k] = stub_to_json(v)
         data["_name"] = stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
         return data
-    elif isinstance(stub_sth, instrument.StubAttr) or isinstance(stub_sth, instrument2.StubAttr):
+    elif isinstance(stub_sth, instrument.StubAttr):
         return dict(
             obj=stub_to_json(stub_sth.obj),
             attr=stub_to_json(stub_sth.attr_name)
         )
-    elif isinstance(stub_sth, instrument.StubMethodCall) or isinstance(stub_sth, instrument2.StubMethodCall):
+    elif isinstance(stub_sth, instrument.StubMethodCall):
         return dict(
             obj=stub_to_json(stub_sth.obj),
             method_name=stub_to_json(stub_sth.method_name),
             args=stub_to_json(stub_sth.args),
             kwargs=stub_to_json(stub_sth.kwargs),
         )
-    elif isinstance(stub_sth, instrument.BinaryOp) or isinstance(stub_sth, instrument2.BinaryOp):
+    elif isinstance(stub_sth, instrument.BinaryOp):
         return "binary_op"
-    elif isinstance(stub_sth, instrument.StubClass) or isinstance(stub_sth, instrument2.StubClass):
+    elif isinstance(stub_sth, instrument.StubClass):
         return stub_sth.proxy_class.__module__ + "." + stub_sth.proxy_class.__name__
     elif isinstance(stub_sth, dict):
         return {stub_to_json(k): stub_to_json(v) for k, v in stub_sth.items()}
