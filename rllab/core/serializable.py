@@ -29,5 +29,16 @@ class Serializable(object):
         return {"__args": self.__args, "__kwargs": self.__kwargs}
 
     def __setstate__(self, d):
-        out = type(self)(*d["__args"], **d["__kwargs"])
+        # convert all __args to keyword-based arguments
+        in_order_args = inspect.getargspec(self.__init__).args[1:]
+        out = type(self)(**dict(zip(in_order_args, d["__args"]), **d["__kwargs"]))
         self.__dict__.update(out.__dict__)
+
+    @classmethod
+    def clone(cls, obj, **kwargs):
+        assert isinstance(obj, Serializable)
+        d = obj.__getstate__()
+        d["__kwargs"] = dict(d["__kwargs"], **kwargs)
+        out = type(obj).__new__(type(obj))
+        out.__setstate__(d)
+        return out
