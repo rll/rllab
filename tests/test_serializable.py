@@ -19,7 +19,7 @@ def test_serializable():
         obj = Simple(name="obj")
         obj1 = Serializable.clone(obj, name="obj1")
         assert obj.w.name.startswith('obj/')
-        assert obj1.w.name.startswith('obj/')
+        assert obj1.w.name.startswith('obj1/')
 
 
 if __name__ == "__main__":
