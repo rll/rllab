@@ -1,5 +1,6 @@
 from rllab.core.parameterized import Parameterized
 from rllab.core.serializable import Serializable
+from rllab.distributions.delta import Delta
 from rllab.policies.base import Policy
 from rllab.misc.overrides import overrides
 
@@ -19,3 +20,17 @@ class UniformControlPolicy(Policy, Serializable):
     def get_params_internal(self, **tags):
         return []
 
+    def get_actions(self, observations):
+        return self.action_space.sample_n(len(observations)), dict()
+
+    @property
+    def vectorized(self):
+        return True
+
+    def reset(self, dones=None):
+        pass
+
+    @property
+    def distribution(self):
+        # Just a placeholder
+        return Delta()
