@@ -8,47 +8,59 @@ import sys
 
 stub(globals())
 
-for step_size in [0.01, 0.05, 0.1]:
+from rllab.misc.instrument import VariantGenerator, variant
 
-    for seed in [1, 11, 21, 31, 41]:
+class VG(VariantGenerator):
 
-        env = normalize(CartpoleEnv())
+    @variant
+    def step_size(self):
+        return [0.01, 0.05, 0.1]
 
-        policy = GaussianMLPPolicy(
-            env_spec=env.spec,
-            # The neural network policy should have two hidden layers, each with 32 hidden units.
-            hidden_sizes=(32, 32)
-        )
+    @variant
+    def seed(self):
+        return [1, 11, 21, 31, 41]
 
-        baseline = LinearFeatureBaseline(env_spec=env.spec)
+variants = VG().variants()
 
-        algo = TRPO(
-            env=env,
-            policy=policy,
-            baseline=baseline,
-            batch_size=4000,
-            max_path_length=100,
-            n_itr=40,
-            discount=0.99,
-            step_size=step_size,
-            # Uncomment both lines (this and the plot parameter below) to enable plotting
-            # plot=True,
-        )
+for v in variants:
 
-        run_experiment_lite(
-            algo.train(),
-            exp_prefix="first_exp",
-            # Number of parallel workers for sampling
-            n_parallel=1,
-            # Only keep the snapshot parameters for the last iteration
-            snapshot_mode="last",
-            # Specifies the seed for the experiment. If this is not provided, a random seed
-            # will be used
-            seed=seed,
-            # mode="local",
-            mode="ec2",
-            variant=dict(step_size=step_size),
-            # plot=True,
-            # terminate_machine=False,
-        )
-        sys.exit()
+    env = normalize(CartpoleEnv())
+
+    policy = GaussianMLPPolicy(
+        env_spec=env.spec,
+        # The neural network policy should have two hidden layers, each with 32 hidden units.
+        hidden_sizes=(32, 32)
+    )
+
+    baseline = LinearFeatureBaseline(env_spec=env.spec)
+
+    algo = TRPO(
+        env=env,
+        policy=policy,
+        baseline=baseline,
+        batch_size=4000,
+        max_path_length=100,
+        n_itr=40,
+        discount=0.99,
+        step_size=v["step_size"],
+        # Uncomment both lines (this and the plot parameter below) to enable plotting
+        # plot=True,
+    )
+
+    run_experiment_lite(
+        algo.train(),
+        exp_prefix="first_exp",
+        # Number of parallel workers for sampling
+        n_parallel=1,
+        # Only keep the snapshot parameters for the last iteration
+        snapshot_mode="last",
+        # Specifies the seed for the experiment. If this is not provided, a random seed
+        # will be used
+        seed=v["seed"],
+        # mode="local",
+        mode="ec2",
+        variant=v,
+        # plot=True,
+        # terminate_machine=False,
+    )
+    sys.exit()
