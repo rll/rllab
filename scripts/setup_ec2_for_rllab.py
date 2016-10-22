@@ -37,9 +37,9 @@ AWS_S3_PATH = "s3://$s3_bucket_name/rllab/experiments"
 AWS_CODE_SYNC_S3_PATH = "s3://$s3_bucket_name/rllab/code"
 
 ALL_REGION_AWS_IMAGE_IDS = {
-    "us-west-1": "ami-bbd19fdb",
-    "us-west-2": "ami-92eb35f2",
-    "us-east-1": "ami-472b6a50"
+    "us-west-1": "ami-ad81c8cd",
+    "us-west-2": "ami-7ea27a1e",
+    "us-east-1": "ami-6b99d57c"
 }
 
 AWS_IMAGE_ID = ALL_REGION_AWS_IMAGE_IDS[AWS_REGION_NAME]
