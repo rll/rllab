@@ -702,12 +702,20 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
     sio.write("""
         die() { status=$1; shift; echo "FATAL: $*"; exit $status; }
     """)
+
     sio.write("""
         EC2_INSTANCE_ID="`wget -q -O - http://169.254.169.254/latest/meta-data/instance-id`"
     """)
     sio.write("""
         aws ec2 create-tags --resources $EC2_INSTANCE_ID --tags Key=Name,Value={exp_name} --region {aws_region}
     """.format(exp_name=params_list[0].get("exp_name"), aws_region=config.AWS_REGION_NAME))
+    if config.LABEL:
+        sio.write("""
+            aws ec2 create-tags --resources $EC2_INSTANCE_ID --tags Key=owner,Value={label} --region {aws_region}
+        """.format(label=config.LABEL, aws_region=config.AWS_REGION_NAME))
+    sio.write("""
+        aws ec2 create-tags --resources $EC2_INSTANCE_ID --tags Key=exp_prefix,Value={exp_prefix} --region {aws_region}
+    """.format(exp_prefix=exp_prefix, aws_region=config.AWS_REGION_NAME))
     sio.write("""
         service docker start
     """)
@@ -732,6 +740,10 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
             aws s3 cp --recursive {code_full_path} {local_code_path} --region {aws_region}
         """.format(code_full_path=code_full_path, local_code_path=config.DOCKER_CODE_DIR,
                    aws_region=config.AWS_REGION_NAME))
+    s3_mujoco_key_path = config.AWS_CODE_SYNC_S3_PATH + '/.mujoco/'
+    sio.write("""
+        aws s3 cp --recursive {} {} --region {}
+    """.format(s3_mujoco_key_path, config.MUJOCO_KEY_PATH, config.AWS_REGION_NAME))
     sio.write("""
         cd {local_code_path}
     """.format(local_code_path=config.DOCKER_CODE_DIR))
@@ -922,12 +934,17 @@ def s3_sync_code(config, dry=False):
 
         upload_cmd = ["aws", "s3", "cp", file_path, remote_path]
 
+        mujoco_key_cmd = [
+            "aws", "s3", "sync", config.MUJOCO_KEY_PATH, "{}/.mujoco/".format(base)]
+
         print(" ".join(tar_cmd))
         print(" ".join(upload_cmd))
+        print(" ".join(mujoco_key_cmd))
 
         if not dry:
             subprocess.check_call(tar_cmd)
             subprocess.check_call(upload_cmd)
+            subprocess.check_call(mujoco_key_cmd)
 
         S3_CODE_PATH = remote_path
         return remote_path
