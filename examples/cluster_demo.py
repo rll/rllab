@@ -47,6 +47,7 @@ for step_size in [0.01, 0.05, 0.1]:
             seed=seed,
             # mode="local",
             mode="ec2",
+            variant=dict(step_size=step_size),
             # plot=True,
             # terminate_machine=False,
         )
