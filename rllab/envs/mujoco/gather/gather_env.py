@@ -130,6 +130,15 @@ class GatherViewer(MjViewer):
                 GL.glColor4f(1.0, 0.0, 0.0, reading)
                 draw_rect(20 * (idx + 1), 60, 5, 50)
 
+def q_inv(a):
+    return [a[0], -a[1], -a[2], -a[3]]
+
+def q_mult(a, b): # multiply two quaternion
+    w = a[0]*b[0] - a[1]*b[1] - a[2]*b[2] - a[3]*b[3]
+    i = a[0]*b[1] + a[1]*b[0] + a[2]*b[3] - a[3]*b[2]
+    j = a[0]*b[2] - a[1]*b[3] + a[2]*b[0] + a[3]*b[1]
+    k = a[0]*b[3] + a[1]*b[2] - a[2]*b[1] + a[3]*b[0]
+    return [w, i, j, k]
 
 class GatherEnv(Env, Serializable):
     MODEL_CLASS = None
@@ -286,7 +295,14 @@ class GatherEnv(Env, Serializable):
             (o[0] - robot_x) ** 2 + (o[1] - robot_y) ** 2)[::-1]
         # fill the readings
         bin_res = self.sensor_span / self.n_bins
-        ori = self.inner_env.model.data.qpos[self.__class__.ORI_IND]
+        if self.__class__.ORI_IND != 2: # free joint
+            ori = [0, 1, 0, 0] # initially facing to x
+            rot = self.inner_env.model.data.qpos[3:7]
+            ori = q_mult(q_mult(rot,ori),q_inv(rot))[1:3] # project onto x-y plane
+            ori = math.atan2(ori[1],ori[0]) # np.angle(ori[0]+ori[1]*1j)
+        else: # hinge
+            ori = self.inner_env.model.data.qpos[self.__class__.ORI_IND] # % (2 * math.pi)
+        # print ori*180/math.pi
         for ox, oy, typ in sorted_objects:
             # compute distance between object and robot
             dist = ((oy - robot_y) ** 2 + (ox - robot_x) ** 2) ** 0.5
