@@ -117,7 +117,7 @@ class MazeEnv(ProxyEnv, Serializable):
         robot_x, robot_y = self.wrapped_env.get_body_com("torso")[:2]
         ori = self.get_ori()
 
-        #print ori*180/math.pi
+        print ori*180/math.pi
 
         structure = self.__class__.MAZE_STRUCTURE
         size_scaling = self.__class__.MAZE_SIZE_SCALING
