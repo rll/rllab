@@ -115,9 +115,9 @@ class MazeEnv(ProxyEnv, Serializable):
         # The observation would include both information about the robot itself as well as the sensors around its
         # environment
         robot_x, robot_y = self.wrapped_env.get_body_com("torso")[:2]
-        ori = self.wrapped_env.model.data.qpos[self.__class__.ORI_IND]
+        ori = self.get_ori()
 
-        # print ori
+        #print ori*180/math.pi
 
         structure = self.__class__.MAZE_STRUCTURE
         size_scaling = self.__class__.MAZE_SIZE_SCALING
@@ -262,3 +262,6 @@ class MazeEnv(ProxyEnv, Serializable):
 
     def action_from_key(self, key):
         return self.wrapped_env.action_from_key(key)
+
+    def get_ori(self):
+        return self.wrapped_env.model.data.qpos[self.__class__.ORI_IND]

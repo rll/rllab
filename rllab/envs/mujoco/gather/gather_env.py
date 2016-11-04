@@ -286,7 +286,8 @@ class GatherEnv(Env, Serializable):
             (o[0] - robot_x) ** 2 + (o[1] - robot_y) ** 2)[::-1]
         # fill the readings
         bin_res = self.sensor_span / self.n_bins
-        ori = self.inner_env.model.data.qpos[self.__class__.ORI_IND]
+        ori = self.get_ori()
+        # print ori*180/math.pi
         for ox, oy, typ in sorted_objects:
             # compute distance between object and robot
             dist = ((oy - robot_y) ** 2 + (ox - robot_x) ** 2) ** 0.5
@@ -356,3 +357,6 @@ class GatherEnv(Env, Serializable):
     def render(self):
         self.get_viewer()
         self.inner_env.render()
+
+    def get_ori(self): # get orientation
+        return self.inner_env.model.data.qpos[self.__class__.ORI_IND]
