@@ -90,7 +90,9 @@ class GymEnv(Env, Serializable):
     def reset(self):
         if hasattr(self.env, 'monitor'):
             if hasattr(self.env.monitor, 'stats_recorder'):
-                self.env.monitor.stats_recorder.done = True
+                recorder = self.env.monitor.stats_recorder
+                if recorder is not None:
+                    recorder.done = True
         return self.env.reset()
 
     def step(self, action):
