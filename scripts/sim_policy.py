@@ -1,14 +1,10 @@
-from rllab.misc.console import query_yes_no
-from rllab.sampler.utils import rollout
 import argparse
+
 import joblib
-import uuid
-import os
-import random
-import numpy as np
 import tensorflow as tf
 
-filename = str(uuid.uuid4())
+from rllab.misc.console import query_yes_no
+from rllab.sampler.utils import rollout
 
 if __name__ == "__main__":
 
@@ -20,9 +16,6 @@ if __name__ == "__main__":
     parser.add_argument('--speedup', type=float, default=1,
                         help='Speedup')
     args = parser.parse_args()
-
-    policy = None
-    env = None
 
     # If the snapshot file use tensorflow, do:
     # import tensorflow as tf
