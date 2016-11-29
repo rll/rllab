@@ -1,13 +1,10 @@
-from rllab.sampler.utils import rollout
 import argparse
+
 import joblib
-import uuid
-import os
-import random
-import numpy as np
 import tensorflow as tf
 
-filename = str(uuid.uuid4())
+from rllab.misc.console import query_yes_no
+from rllab.sampler.utils import rollout
 
 if __name__ == "__main__":
 
@@ -20,18 +17,16 @@ if __name__ == "__main__":
                         help='Speedup')
     args = parser.parse_args()
 
-    policy = None
-    env = None
-
     # If the snapshot file use tensorflow, do:
     # import tensorflow as tf
     # with tf.Session():
     #     [rest of the code]
-    while True:
-        with tf.Session() as sess:
-            data = joblib.load(args.file)
-            policy = data['policy']
-            env = data['env']
-            while True:
-                path = rollout(env, policy, max_path_length=args.max_path_length,
-                               animated=True, speedup=args.speedup)
+    with tf.Session() as sess:
+        data = joblib.load(args.file)
+        policy = data['policy']
+        env = data['env']
+        while True:
+            path = rollout(env, policy, max_path_length=args.max_path_length,
+                           animated=True, speedup=args.speedup)
+            if not query_yes_no('Continue simulation?'):
+                break
