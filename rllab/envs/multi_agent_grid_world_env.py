@@ -1,6 +1,6 @@
 import numpy as np
 from .base import Env
-from rllab.spaces import Discrete, Box
+from sandbox.rocky.tf.spaces import Discrete, Box, Product
 from rllab.envs.base import Step
 from rllab.core.serializable import Serializable
 
@@ -55,7 +55,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
     """
 
     # n: number of agents
-    def __init__(self, desc='4x4', n=2, seed=0):
+    def __init__(self, n=2, desc='4x4', seed=0):
         
         assert(n <= 6 and n >= 2);
         
@@ -179,7 +179,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
 
     
     
-    def get_possible_next_states(self, joint_action):
+    def get_possible_next_states(self, action):
         """
         Given the action, return a list of possible next states and their probabilities. Only next states
         with nonzero probabilities will be returned
@@ -187,12 +187,12 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         :return: a list of tuples (s', p(s'|s,a))
                  here s' = (observation, next_agent_positions, reward, done)
         """
-        assert self.action_space.contains(joint_action)
-        # convert into a list of actions
-        action = []
-        for i in range(self.n_agent):
-            action.append(joint_action % 5)
-            joint_action /= 5
+        # action is a list of int, containing action for each agent
+        
+        #print(action)
+        #print(self.n_agent)
+        
+        assert (len(action) == self.n_agent)
 
         # if agent_i escapes, pos[i] = [-1, -1]
         coors = self.cur_pos
@@ -236,7 +236,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
                     for j in range(i+1, self.n_agent):
                         # move to the same cell || move in opposite dir
                         if next_coors[j] == next_coors[i] or \
-                           (next_coors[j] == coors[i] and coors[j] == next_coor[i]):
+                           (next_coors[j] == coors[i] and coors[j] == next_coors[i]):
                             has_colide = True
                             next_coors[i] = coors[i]
                             mark[i] = True
@@ -276,7 +276,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
 
     @property
     def action_space(self):
-        return Discrete(5 ** self.n_agent) # convert multi-actions into a single joint action
+        return Product(self.n_agent * [Discrete(5)])
 
     @property
     def observation_space(self):
