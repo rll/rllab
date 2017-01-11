@@ -138,26 +138,6 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                 [self.input.input_var],
                 L.get_output(self.output_probs)
             )
-            """
-            ## TODO: start from here to produce combined probs     
-            if prob_network is None:
-                prob_network = MLP(
-                    input_shape=(env_spec.observation_space.flat_dim,),
-                    output_dim=env_spec.action_space.n,
-                    hidden_sizes=hidden_sizes,
-                    hidden_nonlinearity=hidden_nonlinearity,
-                    output_nonlinearity=tf.nn.softmax,
-                    name="prob_network",
-                )
-
-            self._l_prob = prob_network.output_layer
-            self._l_obs = prob_network.input_layer
-            self._f_prob = tensor_utils.compile_function(
-                [prob_network.input_layer.input_var],
-                L.get_output(prob_network.output_layer)
-            )
-
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"""
 
             self._dist = ProductDistribution([Categorical(c.n) for c in env_spec.action_space.components])
 
