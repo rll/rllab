@@ -6,7 +6,7 @@ from sandbox.rocky.tf.envs.base import TfEnv
 from sandbox.rocky.tf.policies.multi_agent_categorical_policy import MultiAgentCategoricalMLPPolicy
 
 
-map_desc = '4x4' # map description, see multi_agent_grid_world_env.py
+map_desc = '4x4-fix' # map description, see multi_agent_grid_world_env.py
 n_row = 4  # n_row and n_col need to be compatible with desc
 n_col = 4
 n_agent = 2 # 2 <= agents <= 6

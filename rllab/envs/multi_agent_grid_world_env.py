@@ -9,16 +9,33 @@ MAPS = {
         ".xxx.xxx.",
         "........."
     ],
+    "chain-fix": [ #MAX 2 agents
+        "axxx.xxxb",
+        "B.......A"
+    ],
     "4x4": [
         "....",
         ".xx.",
         ".xx.",
         "...."
     ],
+    "4x4-fix": [
+        "....",
+        "AxxB",
+        "bxxa",
+        "...."
+    ],
     "5x5": [
         ".....",
         ".xxx.",
         ".....",
+        ".xxx.",
+        "....."
+    ],
+    "5x5-fix": [
+        ".....",
+        "bxxxa",
+        "A...B",
         ".xxx.",
         "....."
     ],
@@ -67,11 +84,15 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         self.raw_desc = desc
         self.n_row, self.n_col = desc.shape
         self.n_agent = n # number of agents
+        self.fixed = ('fix' in desc)
+        if self.fixed:
+            print("starting/goal position fixed!!! assume n_agent == 2!")
+            assert(self.n_agent == 2) # TODO: now fixed map is only for 2 agents
         # generate starting locations and goals
         self.gen_start_and_goal()
         self.gen_initial_state()
         self.domain_fig = None
-
+        
     # generate start positions and goal positions for agents
     #  --> assume every map is fully connected
     def get_empty_location(self):
@@ -81,6 +102,12 @@ class MultiAgentGridWorldEnv(Env, Serializable):
             if self.desc[x,y] == '.':
               return (x, y)
         return (-1, -1)
+    def get_spec_location(self, c):
+        for x in range(self.n_row):
+            for y in range(self.n_col):
+                if self.desc[x, y] == c:
+                    return (x, y)
+        return (-1, -1)
     def gen_start_and_goal(self):
         self.desc = self.raw_desc.copy()
         self.cur_pos = []
@@ -88,12 +115,16 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         self.tar_pos = []
         self.is_done = [False] * self.n_agent
         for agent in range(self.n_agent):
-            x_s, y_s = self.get_empty_location() # start position
-            self.desc[x_s,y_s] = chr(ord('A')+agent)
+            # start position
+            c = chr(ord('A')+agent)
+            x_s, y_s = self.get_empty_location() if not self.fixed else self.get_spec_location(c)
+            self.desc[x_s,y_s] = c
             self.cur_pos.append((x_s,y_s))
             self.cur_pos_map[x_s][y_s] = agent
-            x_g, y_g = self.get_empty_location() # goal position
-            self.desc[x_g,y_g] = chr(ord('a')+agent)
+            # goal position
+            c = chr(ord('a')+agent)
+            x_g, y_g = self.get_empty_location() if not self.fixed else self.get_spec_location(c)
+            self.desc[x_g,y_g] = c
             self.tar_pos.append((x_g,y_g))
 
     # generate initial states
@@ -223,7 +254,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
             else:
                 next_coors.append((tx, ty))
                 if self.raw_desc[tx][ty] == 'o': # check holes
-                    reward -= 1
+                    reward -= 10 # dead is terrible
                     remain -= 1 # dead
                     mark[i] = True
                     done = True # game over
@@ -260,7 +291,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
             x, y = next_coors[i]
             if self.raw_desc[x][y] == chr(ord('a') + i): # reach goal
                 remain -= 1
-                reward += 1
+                reward += 10 # a good thing!
                 next_state[i + 1][x][y] = 0 # clear the whole channel
                 next_coors[i] = (-1, -1)
             else: # normal move
