@@ -20,6 +20,6 @@ class GaussianStrategy(ExplorationStrategy, Serializable):
 
     def get_action(self, t, observation, policy, **kwargs):
         action, agent_info = policy.get_action(observation)
-        sigma = self._max_sigma - (self._max_sigma - self._min_sigma) * min(1.0, t * 1.0) / self._decay_period
+        sigma = self._max_sigma - (self._max_sigma - self._min_sigma) * min(1.0, t * 1.0 / self._decay_period)
         return np.clip(action + np.random.normal(size=len(action)) * sigma, self._action_space.low,
                        self._action_space.high)
