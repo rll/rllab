@@ -102,6 +102,7 @@ Pickled Mode Experiments
 :code:`rllab` also supports a "pickled" mode for running experiments, which supports more configurations like logging and parallelization. A sample script is provided in :code:`examples/trpo_cartpole_pickled.py`. The content is pasted below:
 
 .. code-block:: python
+
     from rllab.algos.trpo import TRPO
     from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
     from rllab.envs.box2d.cartpole_env import CartpoleEnv
