@@ -7,7 +7,7 @@ channels:
     - jjhelmus
 dependencies:
     - python==3.5.2
-    - numpy==1.10.4
+    - numpy==1.11.2
     - scipy
     - path.py
     - python-dateutil
@@ -22,7 +22,6 @@ dependencies:
     - matplotlib
     - opencv3=3.1.0
     - scikit-learn
-    - tensorflow=0.10.0rc0
     - pip:
         - Pillow
         - atari-py
@@ -36,7 +35,9 @@ dependencies:
         - mujoco_py
         - cached_property
         - line_profiler
+        - cloudpickle
         - Cython
+        - redis
         - git+https://github.com/Theano/Theano.git@adfe319ce6b781083d8dc3200fb4481b00853791#egg=Theano
         - git+https://github.com/neocxi/Lasagne.git@484866cf8b38d878e92d521be445968531646bb8#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
@@ -46,4 +47,6 @@ dependencies:
         - git+https://github.com/neocxi/prettytensor.git
         - jupyter
         - progressbar2
-        - chainer==1.15.0
+        - chainer==1.18.0
+        - https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.11.0-cp35-cp35m-linux_x86_64.whl; 'linux' in sys_platform
+        - https://storage.googleapis.com/tensorflow/mac/gpu/tensorflow-0.11.0-py3-none-any.whl; sys_platform == 'darwin'

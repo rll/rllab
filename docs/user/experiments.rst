@@ -96,46 +96,48 @@ see some log messages like the following:
     2016-02-14 14:31:29.922186 PST | -----------------------  -------------
 
 
-Stub Mode Experiments
+Pickled Mode Experiments
 =====================
 
-:code:`rllab` also supports a "stub" mode for running experiments, which supports more configurations like logging and parallelization. A sample script is provided in :code:`examples/trpo_cartpole_stub.py`. The content is pasted below:
+:code:`rllab` also supports a "pickled" mode for running experiments, which supports more configurations like logging and parallelization. A sample script is provided in :code:`examples/trpo_cartpole_pickled.py`. The content is pasted below:
 
 .. code-block:: python
-
     from rllab.algos.trpo import TRPO
     from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
     from rllab.envs.box2d.cartpole_env import CartpoleEnv
     from rllab.envs.normalized_env import normalize
-    from rllab.misc.instrument import stub, run_experiment_lite
+    from rllab.misc.instrument import run_experiment_lite
     from rllab.policies.gaussian_mlp_policy import GaussianMLPPolicy
 
-    stub(globals())
 
-    env = normalize(CartpoleEnv())
+    def run_task(*_):
+        env = normalize(CartpoleEnv())
 
-    policy = GaussianMLPPolicy(
-        env_spec=env.spec,
-        # The neural network policy should have two hidden layers, each with 32 hidden units.
-        hidden_sizes=(32, 32)
-    )
+        policy = GaussianMLPPolicy(
+            env_spec=env.spec,
+            # The neural network policy should have two hidden layers, each with 32 hidden units.
+            hidden_sizes=(32, 32)
+        )
 
-    baseline = LinearFeatureBaseline(env_spec=env.spec)
+        baseline = LinearFeatureBaseline(env_spec=env.spec)
 
-    algo = TRPO(
-        env=env,
-        policy=policy,
-        baseline=baseline,
-        batch_size=4000,
-        whole_paths=True,
-        max_path_length=100,
-        n_itr=40,
-        discount=0.99,
-        step_size=0.01,
-    )
+        algo = TRPO(
+            env=env,
+            policy=policy,
+            baseline=baseline,
+            batch_size=4000,
+            max_path_length=100,
+            n_itr=1000,
+            discount=0.99,
+            step_size=0.01,
+            # Uncomment both lines (this and the plot parameter below) to enable plotting
+            # plot=True,
+        )
+        algo.train()
+
 
     run_experiment_lite(
-        algo.train(),
+        run_task,
         # Number of parallel workers for sampling
         n_parallel=1,
         # Only keep the snapshot parameters for the last iteration
@@ -147,9 +149,9 @@ Stub Mode Experiments
     )
 
 
-The first notable difference is the line `stub(globals())` after all the import calls, which replaces all imported class constructors by stubbed methods. After the call, class constructors like `TRPO()` will return a serializable stub object, and all method invocations and property accessors will also become stub method calls and stub attributes that are serializable. Then, the `run_experiment_lite` call serializes the final stubbed method call, and launches a script that actually runs the experiment.
+Note that the execution of the experiment (including the construction of relevant objects, like environment, policy, algorithm, etc.) has been wrapped in a function call, which is then passed to the `run_experiment_lite` method, which serializes the fucntion call, and launches a script that actually runs the experiment.
 
-The benefit for launching experiment this way is that we separate the configuration of experiment parameters and the actual execution of the experiment. `run_experiment_lite` supports multiple ways of running the experiment, either locally, locally in a docker container, or remotely on ec2 (documentation pending). Multiple experiments with different hyper-parameter settings can be quickly constructed and launched simultaneously on multiple ec2 machines using this abstraction.
+The benefit for launching experiment this way is that we separate the configuration of experiment parameters and the actual execution of the experiment. `run_experiment_lite` supports multiple ways of running the experiment, either locally, locally in a docker container, or remotely on ec2 (see the section on :ref:`cluster`). Multiple experiments with different hyper-parameter settings can be quickly constructed and launched simultaneously on multiple ec2 machines using this abstraction.
 
 Another subtle point is that we use Theano for our algorithm implementations, which has rather poor support for mixed GPU and CPU usage. This might be handy when the main process wants to use GPU for the batch optimization phase, while multiple worker processes want to use the GPU for generating trajectory rollouts. Launching the experiment separately allows the worker processes to be properly initialized with Theano configured to use CPU.
 

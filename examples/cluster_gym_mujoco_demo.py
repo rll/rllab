@@ -3,11 +3,9 @@ from rllab.envs.normalized_env import normalize
 from sandbox.rocky.tf.envs.base import TfEnv
 from sandbox.rocky.tf.policies.gaussian_mlp_policy import GaussianMLPPolicy
 from sandbox.rocky.tf.algos.trpo import TRPO
-from rllab.misc.instrument import stub, run_experiment_lite
+from rllab.misc.instrument import run_experiment_lite
 from rllab.envs.gym_env import GymEnv
 import sys
-
-stub(globals())
 
 from rllab.misc.instrument import VariantGenerator, variant
 
@@ -22,9 +20,8 @@ class VG(VariantGenerator):
     def seed(self):
         return [1, 11, 21, 31, 41]
 
-variants = VG().variants()
 
-for v in variants:
+def run_task(vv):
 
     env = TfEnv(normalize(GymEnv('HalfCheetah-v1', record_video=False, record_log=False)))
 
@@ -45,13 +42,19 @@ for v in variants:
         max_path_length=100,
         n_itr=40,
         discount=0.99,
-        step_size=v["step_size"],
+        step_size=vv["step_size"],
         # Uncomment both lines (this and the plot parameter below) to enable plotting
         # plot=True,
     )
+    algo.train()
+
+
+variants = VG().variants()
+
+for v in variants:
 
     run_experiment_lite(
-        algo.train(),
+        run_task,
         exp_prefix="first_exp",
         # Number of parallel workers for sampling
         n_parallel=1,
