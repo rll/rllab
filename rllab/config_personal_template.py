@@ -2,7 +2,7 @@ import os
 
 USE_GPU = False
 
-DOCKER_IMAGE = "rein/rllab-exp-new"
+DOCKER_IMAGE = "dementrock/rllab3-shared"
 
 KUBE_PREFIX = "template_"
 
