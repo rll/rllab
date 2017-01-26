@@ -38,6 +38,9 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
         Serializable.quick_init(self, locals())
 
         assert isinstance(env_spec.action_space, Product)
+        assert(n_row > 0 and n_col > 0 and n_agent > 0)
+        if (n_agent == 1):
+            assert(msg_dim == 0)
         
         self.n_row, self.n_col, self.n_agent = n_row, n_col, n_agent
 
@@ -53,10 +56,21 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
             outputs = []
             msgs = []
             
-            with tf.variable_scope(name + '-single-net') as scope:
+            with tf.variable_scope(name + '-single-net') as scope:      
+                if msg_dim == 0:
+                    # no communication, directly output probabilities
+                    out_dim = act_dim
+                    out_nonlinear = tf.nn.softmax
+                    if feature_dim > 0:
+                        hidden_layers.append(feature_dim)
+                else:
+                    # communication
+                    out_dim = feature_dim + msg_dim
+                    out_nonlinear = tf.tanh
+                # construct network
                 for i in range(n_agent):
                     cur_self_map = L.SliceLayer(self.input,
-                                                indices=slice(map_size*i,map_size*(i+1)),
+                                                indices=slice(map_size*(i+1),map_size*(i+2)),
                                                 axis = 1)
                     comb_input = L.concat([shared_map, cur_self_map], axis=1)
                     recons_input = L.reshape(comb_input, ([0], 2, map_size)) # (batch, 2, map_size)
@@ -64,20 +78,10 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                                     L.dimshuffle(recons_input, [0, 2, 1]),
                                     ([0],n_row,n_col,2)
                                 ) # (batch, flat_dim(row, col, channel))
-                    if msg_dim == 0:
-                    # no communication, directly output probabilities
-                        out_dim = act_dim
-                        out_nonlinear = tf.nn.softmax
-                        if feature_dim > 0:
-                            hidden_layers.append(feature_dim)
-                    else:
-                    # communication
-                        out_dim = feature_dim + msg_dim
-                        out_nonlinear = tf.tanh
                         
                     single_network = ConvNetwork(
                         name = "single_conv_network",
-                        input_shape=(None,n_row,n_col,2),
+                        input_shape=(n_row,n_col,2),
                         output_dim=out_dim,
                         conv_filters=conv_layers,
                         conv_filter_sizes = [3] * len(conv_layers),
@@ -152,6 +156,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
     def dist_info_sym(self, obs_var, state_info_vars=None):
         outputs = L.get_output(self.output_probs, {self.input: tf.cast(obs_var, tf.float32)})
         D = dict()
+        assert(len(outputs) == self.n_agent)
         for i, out in enumerate(outputs):
             D['id_%d_prob' % i] = out
         return D
@@ -160,6 +165,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
     def dist_info(self, obs, state_infos=None):
         outputs = self.f_prob(obs)
         D = dict()
+        assert(len(outputs) == self.n_agent)
         for i, out in enumerate(outputs):
             D['id_%d_prob' % i] = out
         return D
@@ -182,11 +188,12 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
     def get_actions(self, observations):
         flat_obs = self.observation_space.flatten_n(observations)
         probs = self.f_prob(flat_obs)
+        assert(len(probs) == self.n_agent)
         rev_actions = [list(map(c.weighted_sample, p)) for p,c in zip(probs,self.action_space.components)]
         n = len(rev_actions)
         assert(n == self.n_agent)
         batch_size = len(rev_actions[0])
-        actions = [[rev_actions[i][b] for i in range(n)] for b in range(batch_size)]
+        actions = [[rev_actions[i][b] for i in range(n)] for b in range(batch_size)] #[batch_size, n_agent]
         D = dict()
         for i, p in enumerate(probs):
             D['id_%d_prob' % i] = p

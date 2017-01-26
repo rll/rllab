@@ -4,6 +4,11 @@ from sandbox.rocky.tf.spaces import Discrete, Box, Product
 from rllab.envs.base import Step
 from rllab.core.serializable import Serializable
 
+dead_reward = -10
+escape_reward = 10
+collide_reward = -1
+hit_wall_reward = 0
+
 MAPS = {
     "chain": [ #MAX 2 agents
         ".xxx.xxx.",
@@ -25,6 +30,12 @@ MAPS = {
         "bxxa",
         "...."
     ],
+    "4x4-single-fix": [
+        "....",
+        "Axx.",
+        ".xxa",
+        "...."
+    ],
     "5x5": [
         ".....",
         ".xxx.",
@@ -33,11 +44,11 @@ MAPS = {
         "....."
     ],
     "5x5-fix": [
-        ".....",
+        "..C..",
         "bxxxa",
         "A...B",
         ".xxx.",
-        "....."
+        "..c.."
     ],
     "7x7": [
         "..xxx..",
@@ -48,7 +59,16 @@ MAPS = {
         ".x...x.",
         "..xxx.."
     ],
-    "9x9_danger": [
+    "7x7-fix": [
+        ".Axxxb.",
+        ".x...x.",
+        "...x...",
+        "dCxxxDc",
+        "...x...",
+        ".x...x.",
+        ".Bxxxa."
+    ],
+    "9x9": [
         "o...o...o",
         "..x...x..",
         "....o....",
@@ -59,8 +79,44 @@ MAPS = {
         "..x...x..",
         "o...o...o"
     ],
+    "9x9-fix": [
+        "od..o..co",
+        "A.x.E.x.B",
+        "....o....",
+        "..xxxxx..",
+        "d..ba...c",
+        "..xxxxx..",
+        "....o....",
+        "..x.e.x..",
+        "o..CoD..o"
+    ],
+    "9x9-fix-single": [
+        "o...o...o",
+        "..x.A.x..",
+        "....o....",
+        "..xxxxx..",
+        ".........",
+        "..xxxxx..",
+        "....o....",
+        "..x.a.x..",
+        "o...o...o"
+    ]
 }
 
+def get_num_agent(desc):
+    if isinstance(desc, list):
+        desc = "".join(desc)
+    import string
+    last = '.'
+    n = 0
+    for c in string.ascii_uppercase:
+        if c in desc:
+            last = c
+            n += 1
+    if (n > 0 and last != string.ascii_uppercase[n - 1]):
+        print ("the input map is not valid! the indices of agents must start from A one by one!")
+        assert (False)
+    return n
 
 class MultiAgentGridWorldEnv(Env, Serializable):
     """
@@ -74,20 +130,32 @@ class MultiAgentGridWorldEnv(Env, Serializable):
     # n: number of agents
     def __init__(self, n=2, desc='4x4', seed=0):
         
-        assert(n <= 6 and n >= 2);
+        assert(n <= 6 and n >= 0);
+        if ('single' in desc):
+            assert(n == 1)
+        elif ('fix' not in desc):
+            assert(n > 0)
+
         
         Serializable.quick_init(self, locals())
+        self.fixed = ('fix' in desc)
         self.input_desc = desc
         if isinstance(desc, str):
             desc = MAPS[desc]
+        if self.fixed:
+            n_in_map = get_num_agent(desc)
+            if n > 0 and n != n_in_map:
+                print ("Number of agents (%d) in the map differs from the input (%d)!" % (n_in_map, n))
+                print (" --> set n_agent to %d" % (n_in_map))
+            n = n_in_map
+        
+        assert(n > 0) # must be positive number of agents
+                
         desc = np.array(list(map(list, desc)))
         self.raw_desc = desc
         self.n_row, self.n_col = desc.shape
         self.n_agent = n # number of agents
-        self.fixed = ('fix' in desc)
-        if self.fixed:
-            print("starting/goal position fixed!!! assume n_agent == 2!")
-            assert(self.n_agent == 2) # TODO: now fixed map is only for 2 agents
+
         # generate starting locations and goals
         self.gen_start_and_goal()
         self.gen_initial_state()
@@ -238,7 +306,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         # move agents
         for i in range(self.n_agent):
             x, y = coors[i]
-            if x > 0:
+            if x >= 0:
                 remain += 1 # an active agent
             # single move
             tx, ty = x + increments[action[i]][0], y + increments[action[i]][1]
@@ -250,14 +318,16 @@ class MultiAgentGridWorldEnv(Env, Serializable):
                 mark[i] = True
                 next_coors.append(coors[i])
                 if x > -1 and action[i] != 4: # move to wall or out of range
-                    reward -= 1
+                    reward += hit_wall_reward
             else:
                 next_coors.append((tx, ty))
                 if self.raw_desc[tx][ty] == 'o': # check holes
-                    reward -= 10 # dead is terrible
+                    reward += dead_reward # dead is terrible
                     remain -= 1 # dead
                     mark[i] = True
                     done = True # game over
+        
+        assert(remain >= 0)
         
         # check collisions
         while True:
@@ -271,10 +341,10 @@ class MultiAgentGridWorldEnv(Env, Serializable):
                             has_colide = True
                             next_coors[i] = coors[i]
                             mark[i] = True
-                            reward -= 1
+                            reward += collide_reward
                             if not mark[j]:
                                 mark[j] = True
-                                reward -= 1
+                                reward += collide_reward
                                 next_coors[j] = coors[j]
                             break
             if not has_colide:
@@ -291,7 +361,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
             x, y = next_coors[i]
             if self.raw_desc[x][y] == chr(ord('a') + i): # reach goal
                 remain -= 1
-                reward += 10 # a good thing!
+                reward += escape_reward # a good thing!
                 next_state[i + 1][x][y] = 0 # clear the whole channel
                 next_coors[i] = (-1, -1)
             else: # normal move
@@ -301,7 +371,8 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         # check if finished
         if remain == 0:
             done = True
-
+        assert(remain >= 0)    
+            
         # return, currently assume deterministic transition
         return [(next_state, next_coors, reward, done, 1.)]
 

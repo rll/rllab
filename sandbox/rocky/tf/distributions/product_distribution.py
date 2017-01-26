@@ -59,7 +59,7 @@ class ProductDistribution(Distribution):
         ret = 0
         for x_var_i, dist_info_var_i, dist_i in zip(splitted_x_vars, dist_info_vars, self.distributions):
             ret += dist_i.log_likelihood_sym(x_var_i, dist_info_var_i)
-        return ret
+        return ret #[batch, n]
 
     def likelihood_ratio_sym(self, x_var, old_dist_info_vars, new_dist_info_vars):
         logli_new = self.log_likelihood_sym(x_var, new_dist_info_vars)
@@ -86,7 +86,7 @@ class ProductDistribution(Distribution):
 
     def entropy(self, info):
         dist_infos = self._split_dist_info(info)
-        return np.sum([dist.entropy(info) for dist, info in zip(self.distributions, dist_infos)])
+        return np.sum([dist.entropy(info) for dist, info in zip(self.distributions, dist_infos)], axis=0)
 
     @property
     def dist_info_specs(self):
@@ -107,7 +107,7 @@ class ProductDistribution(Distribution):
     def sample_sym(self, dist_info):
         specs = self._split_dist_info(dist_info)
         samples = [dist.sample_sym(sp) for sp, dist in zip(specs, self.distributions)]
-        return samples
-        #samples = tf.pack(samples)
-        #return tf.transpose(samples, [1, 0])
+        #return samples
+        samples = tf.pack(samples)
+        return tf.transpose(samples, [1, 0])
         
