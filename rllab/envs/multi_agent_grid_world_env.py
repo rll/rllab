@@ -12,11 +12,13 @@ hit_wall_reward = 0
 MAPS = {
     "chain": [ #MAX 2 agents
         ".xxx.xxx.",
-        "........."
+        ".........",
+        "xxxxxxxxx"
     ],
     "chain-fix": [ #MAX 2 agents
         "axxx.xxxb",
-        "B.......A"
+        "B.......A",
+        "xxxxxxxxx"
     ],
     "4x4": [
         "....",
