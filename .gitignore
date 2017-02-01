@@ -37,4 +37,5 @@ blackbox
 rllab/config_personal.py
 *.swp
 *~
+temp/
 #sandbox

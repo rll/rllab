@@ -66,7 +66,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                 else:
                     # communication
                     out_dim = feature_dim + msg_dim
-                    out_nonlinear = tf.tanh
+                    out_nonlinear = tf.nn.elu 
                 # construct network
                 for i in range(n_agent):
                     cur_self_map = L.SliceLayer(self.input,
@@ -87,7 +87,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                         conv_filter_sizes = [3] * len(conv_layers),
                         conv_strides = [1] * len(conv_layers),
                         conv_pads = ['SAME'] * len(conv_layers),
-                        hidden_nonlinearity = tf.nn.relu,
+                        hidden_nonlinearity = tf.nn.elu,
                         hidden_sizes = hidden_layers,
                         output_nonlinearity = out_nonlinear,
                         input_layer = cur_input
@@ -126,7 +126,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                             input_shape = (comb_dim,),
                             output_dim = act_dim,
                             hidden_sizes = comm_layers,
-                            hidden_nonlinearity=tf.nn.relu,
+                            hidden_nonlinearity=tf.nn.elu,
                             output_nonlinearity=tf.nn.softmax,
                             input_layer=comb_features
                         )            

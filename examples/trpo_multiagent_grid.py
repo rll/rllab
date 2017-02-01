@@ -6,11 +6,22 @@ from rllab.envs.normalized_env import normalize
 from sandbox.rocky.tf.envs.base import TfEnv
 from sandbox.rocky.tf.policies.multi_agent_categorical_policy import MultiAgentCategoricalMLPPolicy
 
+# store policy
+import rllab.misc.logger as logger
 
-map_desc = '5x5-fix' # map description, see multi_agent_grid_world_env.py
-n_row = 5  # n_row and n_col need to be compatible with desc
-n_col = 5
-n_agent = 3 # 2 <= agents <= 6
+policy_dir = None #'../temp/' # or None
+store_mode = 'gap' # 'all' or 'last' or None
+store_gap = 3
+
+map_desc = '4x4-fix' # map description, see multi_agent_grid_world_env.py
+n_row = 4  # n_row and n_col need to be compatible with desc
+n_col = 4
+n_agent = 2 # 2 <= agents <= 6
+
+
+logger.set_snapshot_dir(policy_dir)
+logger.set_snapshot_mode(store_mode)
+logger.set_snapshot_gap(store_gap)
 
 env = TfEnv(normalize(MultiAgentGridWorldEnv(n = n_agent, desc = map_desc)))
 
@@ -21,8 +32,8 @@ policy = MultiAgentCategoricalMLPPolicy(
     n_agent,
     env_spec=env.spec,
     feature_dim = 10, # feature from each agent's local information
-    msg_dim = 0, # when msg_dim == 0, no communication
-    conv_layers=[4,4,4], # number of conv-layers and the number of kernels
+    msg_dim = 2, # when msg_dim == 0, no communication
+    conv_layers= [4] * 3, # number of conv-layers and the number of kernels
     hidden_layers=[], # hidden layers after conv-layers
     comm_layers = [10], # hidden layers after receiving msgs from other agents
     act_dim = 5 # always 5 in grid domain: 4 directions + stay
@@ -34,8 +45,8 @@ algo = TRPO(
     env=env,
     policy=policy,
     baseline=baseline,
-    batch_size=1000,
-    max_path_length=40,
+    batch_size=2000,
+    max_path_length=30,
     n_itr=80,
     discount=0.99,
     step_size=0.1,
