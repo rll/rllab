@@ -25,7 +25,8 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
             conv_layers=[4,4,4],
             hidden_layers=[],
             comm_layers = [10],
-            act_dim = 5
+            act_dim = 5,
+            shared_weights = True, # whether agents share the weights
     ):
         """
         :param env_spec: A spec for the mdp.
@@ -35,6 +36,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
         are ignored
         :return:
         """
+
         Serializable.quick_init(self, locals())
 
         assert isinstance(env_spec.action_space, Product)
@@ -42,6 +44,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
         if (n_agent == 1):
             assert(msg_dim == 0)
         
+        self.shared_weights = shared_weights
         self.n_row, self.n_col, self.n_agent = n_row, n_col, n_agent
 
         map_size = n_row * n_col
@@ -78,9 +81,12 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                                     L.dimshuffle(recons_input, [0, 2, 1]),
                                     ([0],n_row,n_col,2)
                                 ) # (batch, flat_dim(row, col, channel))
-                        
+                    
+                    curr_name = "single_conv_network"
+                    if not self.shared_weights:
+                        curr_name += "_%d" % (i)
                     single_network = ConvNetwork(
-                        name = "single_conv_network",
+                        name = curr_name,
                         input_shape=(n_row,n_col,2),
                         output_dim=out_dim,
                         conv_filters=conv_layers,
@@ -107,7 +113,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                                          axis=1)
                         )
                     
-                    if i == 0:
+                    if i == 0 and self.shared_weights:
                         scope.reuse_variables()
 
             final_outputs = [] # list of actions probs by each agent
@@ -121,8 +127,11 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                         comb_features = L.concat([outputs[i]]+income_msgs, axis = 1)
                         comb_dim = feature_dim + msg_dim * (self.n_agent - 1)
                         # communication network
+                        curr_name = 'single-comm-MLP'
+                        if not self.shared_weights:
+                            curr_name += "_%d" % (i)
                         comm_network = MLP(
-                            name = 'single-comm-MLP',
+                            name = curr_name,
                             input_shape = (comb_dim,),
                             output_dim = act_dim,
                             hidden_sizes = comm_layers,
@@ -133,7 +142,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                         
                         final_outputs.append(comm_network.output_layer)
                         
-                        if i == 0:
+                        if i == 0 and self.shared_weights:
                             scope.reuse_variables()
             
             self.output_probs = final_outputs
@@ -144,7 +153,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
             )
 
             self._dist = ProductDistribution([Categorical(c.n) for c in env_spec.action_space.components])
-
+            
             super(MultiAgentCategoricalMLPPolicy, self).__init__(env_spec)
             LayersPowered.__init__(self, final_outputs)
 

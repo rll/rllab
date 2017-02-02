@@ -3,19 +3,40 @@ from .base import Env
 from sandbox.rocky.tf.spaces import Discrete, Box, Product
 from rllab.envs.base import Step
 from rllab.core.serializable import Serializable
+import curses
 
 dead_reward = -10
 escape_reward = 10
 collide_reward = -1
-hit_wall_reward = 0
+hit_wall_reward = -1
 
 MAPS = {
-    "chain": [ #MAX 2 agents
+    "chain-tiny": [ #MAX 2 agents, 3x5
+        ".x.x.",
+        ".....",
+        "xxxxx"
+    ],
+    "chain-tiny-fix": [ #MAX 2 agents, 3x5
+        "ax.xb",
+        "B...A",
+        "xxxxx"
+    ],
+    "chain-mid": [ #MAX 2 agents, 3x7
+        ".xx.xx.",
+        ".......",
+        "xxxxxxx"
+    ],
+    "chain-mid-fix": [ #MAX 2 agents, 3x7
+        "axx.xxb",
+        "B.....A",
+        "xxxxxxx"
+    ],
+    "chain": [ #MAX 2 agents, 3x9
         ".xxx.xxx.",
         ".........",
         "xxxxxxxxx"
     ],
-    "chain-fix": [ #MAX 2 agents
+    "chain-fix": [ #MAX 2 agents, 3x9
         "axxx.xxxb",
         "B.......A",
         "xxxxxxxxx"
@@ -162,6 +183,7 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         self.gen_start_and_goal()
         self.gen_initial_state()
         self.domain_fig = None
+        self.last_action = None
         
     # generate start positions and goal positions for agents
     #  --> assume every map is fully connected
@@ -202,19 +224,21 @@ class MultiAgentGridWorldEnv(Env, Serializable):
     #  states[0]: global map
     #  states[i+1] for i >= 0: position and goal for agent i
     def gen_initial_state(self):
+        # clear last action
+        self.last_action = None
         self.state = np.zeros((self.n_agent+1,self.n_row, self.n_col))
         for i in range(self.n_agent):
             cp = self.cur_pos[i]
             tp = self.tar_pos[i]
-            self.state[i+1][cp[0]][cp[1]]=1 #current position
-            self.state[i+1][tp[0]][tp[1]]=-1 #goal
-            self.state[0][cp[0]][cp[1]]=0.5 #agent
+            self.state[i+1][cp[0]][cp[1]]=-1 #current position
+            self.state[i+1][tp[0]][tp[1]]=1 #goal
+            self.state[0][cp[0]][cp[1]]=-1 #agent
         for x in range(self.n_row):
             for y in range(self.n_col):
                 if self.raw_desc[x][y] == 'x':
                     self.state[0][x][y] = 1 # wall
                 elif self.raw_desc[x][y] == 'o':
-                    self.state[0][x][y] = -1 # hole
+                    self.state[0][x][y] = 1 # hole
 
     def reset(self):
         # re-generate all the positions of the agents
@@ -224,6 +248,43 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         assert self.observation_space.contains(self.state)
         
         return self.state
+
+    # printer functions
+    def get_content_str(self):
+        self.desc = self.raw_desc.copy()
+        for i in range(self.n_agent):
+            c = chr(ord('A')+i)
+            x,y = self.get_spec_location(c)
+            self.desc[x,y] = '.'
+            if (self.cur_pos[i][0] == -1):
+                self.desc[self.tar_pos[i]] = '.'
+        for i in range(self.n_agent):
+            x,y=self.cur_pos[i]
+            c = chr(ord('A')+i)
+            if x > -1:
+                self.desc[x,y] = c
+        ret = ''
+        for i in range(self.n_row):
+            ret += "".join(self.desc[i])+"\n"
+        for i in range(self.n_agent):
+            c = chr(ord('A')+i)
+            a = -1 if self.last_action is None else self.last_action[i]
+            ret += c + " -> " + self.direction_from_action(a) + "\n"
+        return ret
+             
+    def render(self):
+        content = self.get_content_str() + ">>> any key to cont ...\n"
+        screen = curses.initscr()
+        screen.clear()
+        screen.addstr(0, 0, content)
+        screen.refresh()
+        try:
+            screen.getch()
+        except KeyboardInterrupt:
+            curses.endwin()
+            raise KeyboardInterrupt
+        curses.endwin()
+        
 
     @staticmethod
     def action_from_direction(d):
@@ -239,6 +300,11 @@ class MultiAgentGridWorldEnv(Env, Serializable):
             up=3,
             stay=4
         )[d]
+    @staticmethod
+    def direction_from_action(d):
+        if d < 0 or d >= 5:
+            return "N/A"
+        return ["left","down","right","up","stay"][d]
     
     # Helper Method
     def plot_current_map(self):
@@ -276,6 +342,8 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         next_state = next_state_info[0]
 
         self.state = next_state
+        
+        self.last_action = action
         return Step(observation=self.state, reward=reward, done=done)
 
     
@@ -367,8 +435,8 @@ class MultiAgentGridWorldEnv(Env, Serializable):
                 next_state[i + 1][x][y] = 0 # clear the whole channel
                 next_coors[i] = (-1, -1)
             else: # normal move
-                next_state[0][x][y] = 0.5
-                next_state[i + 1][x][y] = 1
+                next_state[0][x][y] = -1   # shared channel
+                next_state[i + 1][x][y] = -1  # private channel
         
         # check if finished
         if remain == 0:
