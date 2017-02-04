@@ -47,6 +47,11 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
         self.shared_weights = shared_weights
         self.n_row, self.n_col, self.n_agent = n_row, n_col, n_agent
 
+        # NOTE: *IMPORTANT* 
+        #    RLLab requires all the passed-in arguments to remain unchanged!
+        #    Otherwise error will happen when loading a saved model
+        self.hidden_layers = hidden_layers.copy()
+
         map_size = n_row * n_col
 
         with tf.variable_scope(name):
@@ -65,7 +70,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                     out_dim = act_dim
                     out_nonlinear = tf.nn.softmax
                     if feature_dim > 0:
-                        hidden_layers.append(feature_dim)
+                        self.hidden_layers.append(feature_dim)
                 else:
                     # communication
                     out_dim = feature_dim + msg_dim
@@ -94,14 +99,13 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                         conv_strides = [1] * len(conv_layers),
                         conv_pads = ['SAME'] * len(conv_layers),
                         hidden_nonlinearity = tf.nn.elu,
-                        hidden_sizes = hidden_layers,
+                        hidden_sizes = self.hidden_layers,
                         output_nonlinearity = out_nonlinear,
                         input_layer = cur_input
                     )
                     
                     cur_output = single_network.output_layer # (batch, out_dim)
                     if (msg_dim == 0):
-                        msgs.append(None)
                         outputs.append(cur_output)
                     else:
                         msgs.append(L.SliceLayer(cur_output,
