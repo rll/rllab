@@ -26,7 +26,10 @@ if __name__ == "__main__":
         policy = data['policy']
         env = data['env']
         while True:
-            path = rollout(env, policy, max_path_length=args.max_path_length,
-                           animated=True, speedup=args.speedup)
+            try:
+                path = rollout(env, policy, max_path_length=args.max_path_length,
+                               animated=True, speedup=args.speedup)
+            except KeyboardInterrupt:
+                pass
             if not query_yes_no('Continue simulation?'):
                 break
