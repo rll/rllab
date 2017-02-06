@@ -358,9 +358,6 @@ class MultiAgentGridWorldEnv(Env, Serializable):
         """
         # action is a list of int, containing action for each agent
         
-        #print(action)
-        #print(self.n_agent)
-        
         assert (len(action) == self.n_agent)
 
         # if agent_i escapes, pos[i] = [-1, -1]
@@ -404,7 +401,9 @@ class MultiAgentGridWorldEnv(Env, Serializable):
             has_colide = False
             for i in range(self.n_agent):
                 if not mark[i]:
-                    for j in range(i+1, self.n_agent):
+                    for j in range(self.n_agent):
+                        if j == i:
+                            continue
                         # move to the same cell || move in opposite dir
                         if next_coors[j] == next_coors[i] or \
                            (next_coors[j] == coors[i] and coors[j] == next_coors[i]):
