@@ -1,6 +1,3 @@
-
-
-
 from rllab.spaces.base import Space
 import tensorflow as tf
 import numpy as np
@@ -12,7 +9,7 @@ class Product(Space):
             assert len(components) == 1
             components = components[0]
         self._components = tuple(components)
-        dtypes = [c.new_tensor_variable("tmp", extra_dims=0).dtype for c in components]
+        dtypes = [c.dtype for c in components]
         if len(dtypes) > 0 and hasattr(dtypes[0], "as_numpy_dtype"):
             dtypes = [d.as_numpy_dtype for d in dtypes]
         self._common_dtype = np.core.numerictypes.find_common_type([], dtypes)
@@ -35,8 +32,12 @@ class Product(Space):
         )
 
     @property
+    def dtype(self):
+        return self._common_dtype
+
+    @property
     def flat_dim(self):
-        return np.sum([c.flat_dim for c in self._components])
+        return int(np.sum([c.flat_dim for c in self._components]))
 
     def flatten(self, x):
         return np.concatenate([c.flatten(xi) for c, xi in zip(self._components, x)])
