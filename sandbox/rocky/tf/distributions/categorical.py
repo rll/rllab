@@ -1,6 +1,3 @@
-
-
-
 import numpy as np
 from .base import Distribution
 import tensorflow as tf
@@ -26,7 +23,7 @@ class Categorical(Distribution):
         )
         self._f_sample = tensor_utils.compile_function(
             inputs=[weights_var],
-            outputs=tf.multinomial(weights_var, num_samples=1)[:, 0],
+            outputs=tf.multinomial(tf.log(weights_var + 1e-8), num_samples=1)[:, 0],
         )
 
     @property
@@ -99,9 +96,7 @@ class Categorical(Distribution):
         return [("prob", (self.dim,))]
 
     def sample(self, dist_info):
-        samples = self._f_sample(dist_info["prob"])
-        import ipdb;
-        ipdb.set_trace()
+        return self._f_sample(dist_info["prob"])
 
     def sample_sym(self, dist_info):
         probs = dist_info["prob"]
