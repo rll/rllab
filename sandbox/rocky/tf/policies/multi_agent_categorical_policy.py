@@ -149,7 +149,7 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
                         if i == 0 and self.shared_weights:
                             scope.reuse_variables()
             
-            self.output_probs = final_outputs
+            self.output_probs = L.concat(final_outputs, axis = 1)
             
             self.f_prob = tensor_utils.compile_function(
                 [self.input.input_var],
@@ -167,7 +167,8 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
 
     @overrides
     def dist_info_sym(self, obs_var, state_info_vars=None):
-        outputs = L.get_output(self.output_probs, {self.input: tf.cast(obs_var, tf.float32)})
+        val = L.get_output(self.output_probs, {self.input: tf.cast(obs_var, tf.float32)})
+        outputs = self._dist._split_x(val) # split compact outputs
         D = dict()
         assert(len(outputs) == self.n_agent)
         for i, out in enumerate(outputs):
@@ -176,7 +177,8 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
 
     @overrides
     def dist_info(self, obs, state_infos=None):
-        outputs = self.f_prob(obs)
+        val = self.f_prob(obs)
+        outputs = self._dist._split_x(val) # split compact outputs
         D = dict()
         assert(len(outputs) == self.n_agent)
         for i, out in enumerate(outputs):
@@ -190,7 +192,8 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
     @overrides
     def get_action(self, observation):
         flat_obs = self.observation_space.flatten(observation)
-        prob_arr = self.f_prob([flat_obs])
+        val = self.f_prob([flat_obs])
+        prob_arr = self._dist._split_x(val)
         probs = [p[0] for p in prob_arr]
         actions = [s.weighted_sample(p) for s, p in zip(self.action_space.components, probs)]
         D = dict()
@@ -200,7 +203,8 @@ class MultiAgentCategoricalMLPPolicy(StochasticPolicy, LayersPowered, Serializab
 
     def get_actions(self, observations):
         flat_obs = self.observation_space.flatten_n(observations)
-        probs = self.f_prob(flat_obs)
+        val = self.f_prob(flat_obs)
+        probs = self._dist._split_x(val)
         assert(len(probs) == self.n_agent)
         rev_actions = [list(map(c.weighted_sample, p)) for p,c in zip(probs,self.action_space.components)]
         n = len(rev_actions)
