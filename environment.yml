@@ -5,6 +5,7 @@ channels:
     - https://conda.anaconda.org/cjs14
     - https://conda.anaconda.org/menpo
     - jjhelmus
+    - soumith
 dependencies:
     - python==3.5.2
     - numpy==1.11.2
@@ -22,6 +23,8 @@ dependencies:
     - matplotlib
     - opencv3=3.1.0
     - scikit-learn
+    - pytorch
+    - torchvision
     - pip:
         - Pillow
         - atari-py
@@ -42,7 +45,7 @@ dependencies:
         - git+https://github.com/neocxi/Lasagne.git@484866cf8b38d878e92d521be445968531646bb8#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
         - awscli
-        - git+https://github.com/openai/gym.git
+        - git+https://github.com/openai/gym.git@385a85fd0c1b26ab1374f208fbb370e22647548d#egg=gym
         - pyglet
         - git+https://github.com/neocxi/prettytensor.git
         - jupyter
