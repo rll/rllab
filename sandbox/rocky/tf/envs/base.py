@@ -16,6 +16,8 @@ def to_tf_space(space):
         return Discrete(space.n)
     elif isinstance(space, TheanoProduct):
         return Product(list(map(to_tf_space, space.components)))
+    elif isinstance(space,(Discrete,Box,Product)):
+        return space
     else:
         raise NotImplementedError
 
