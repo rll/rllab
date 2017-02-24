@@ -3,6 +3,7 @@ import gym.wrappers
 import gym.envs
 import gym.spaces
 import traceback
+import logging
 
 try:
     from gym.wrappers.monitoring import logger as monitor_logger
@@ -19,7 +20,6 @@ from rllab.spaces.box import Box
 from rllab.spaces.discrete import Discrete
 from rllab.spaces.product import Product
 from rllab.misc import logger
-import logging
 
 
 def convert_gym_space(space):
