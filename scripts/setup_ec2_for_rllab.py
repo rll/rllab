@@ -274,7 +274,7 @@ def setup_ec2():
                 raise e
         print("Security group created with id %s" % str(security_group.id))
 
-        key_name = 'rllab-%s' % region
+        key_name = 'rllab-vitchyr-%s' % region
         try:
             print("Trying to create key pair with name %s" % key_name)
             key_pair = ec2_client.create_key_pair(KeyName=key_name)
