@@ -80,6 +80,12 @@ class Env(object):
         """
         pass
 
+    def get_param_values(self):
+        return None
+
+    def set_param_values(self, params):
+        pass
+
 
 _Step = collections.namedtuple("Step", ["observation", "reward", "done", "info"])
 
