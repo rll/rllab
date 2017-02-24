@@ -11,6 +11,7 @@ from string import Template
 ACCESS_KEY = os.environ["AWS_ACCESS_KEY"]
 ACCESS_SECRET = os.environ["AWS_ACCESS_SECRET"]
 S3_BUCKET_NAME = os.environ["RLLAB_S3_BUCKET"]
+REGION = os.environ["AWS_REGION"]
 
 ALL_REGION_AWS_SECURITY_GROUP_IDS = {}
 ALL_REGION_AWS_KEY_NAMES = {}
@@ -216,6 +217,9 @@ def setup_s3():
         s3_client.create_bucket(
             ACL='private',
             Bucket=S3_BUCKET_NAME,
+            CreateBucketConfiguration={
+                'LocationConstraint': REGION,
+            },
         )
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == 'BucketAlreadyExists':
