@@ -83,7 +83,9 @@ class GymEnv(Env, Serializable):
             self.monitoring = True
 
         self._observation_space = convert_gym_space(env.observation_space)
+        logger.log("observation space: {}".format(self._observation_space))
         self._action_space = convert_gym_space(env.action_space)
+        logger.log("action space: {}".format(self._action_space))
         self._horizon = env.spec.tags['wrapper_config.TimeLimit.max_episode_steps']
         self._log_dir = log_dir
         self._force_reset = force_reset
