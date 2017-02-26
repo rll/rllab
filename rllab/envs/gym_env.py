@@ -3,6 +3,7 @@ import gym.wrappers
 import gym.envs
 import gym.spaces
 import traceback
+import logging
 
 try:
     from gym.wrappers.monitoring import logger as monitor_logger
@@ -19,7 +20,6 @@ from rllab.spaces.box import Box
 from rllab.spaces.discrete import Discrete
 from rllab.spaces.product import Product
 from rllab.misc import logger
-import logging
 
 
 def convert_gym_space(space):
@@ -102,7 +102,9 @@ class GymEnv(Env, Serializable):
 
     def reset(self):
         if self._force_reset and self.monitoring:
-            recorder = self.env._monitor.stats_recorder
+            from gym.wrappers.monitoring import _Monitor
+            assert isinstance(self.env, _Monitor)
+            recorder = self.env.stats_recorder
             if recorder is not None:
                 recorder.done = True
         return self.env.reset()

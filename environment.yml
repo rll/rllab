@@ -8,11 +8,11 @@ channels:
     - soumith
 dependencies:
     - python==3.5.2
-    - numpy==1.11.2
+    - numpy==1.12.0
     - scipy
     - path.py
     - python-dateutil
-    - joblib==0.9.4
+    - joblib==0.10.3
     - mako
     - ipywidgets
     - numba
@@ -23,8 +23,9 @@ dependencies:
     - matplotlib
     - opencv3=3.1.0
     - scikit-learn
-    - pytorch
-    - torchvision
+    - pytorch==0.1.9
+    - torchvision==0.1.6
+    - mpi4py
     - pip:
         - Pillow
         - atari-py
@@ -34,6 +35,7 @@ dependencies:
         - PyOpenGL
         - nose2
         - pyzmq
+        - tqdm
         - msgpack-python
         - mujoco_py
         - cached_property
@@ -41,11 +43,12 @@ dependencies:
         - cloudpickle
         - Cython
         - redis
+        - keras==1.2.1
         - git+https://github.com/Theano/Theano.git@adfe319ce6b781083d8dc3200fb4481b00853791#egg=Theano
         - git+https://github.com/neocxi/Lasagne.git@484866cf8b38d878e92d521be445968531646bb8#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
         - awscli
-        - git+https://github.com/openai/gym.git@385a85fd0c1b26ab1374f208fbb370e22647548d#egg=gym
+        - git+https://github.com/openai/gym.git@93d554bdbb4b2d29ff1a685158dbde93b36e3801#egg=gym
         - pyglet
         - git+https://github.com/neocxi/prettytensor.git
         - jupyter
@@ -53,3 +56,6 @@ dependencies:
         - chainer==1.18.0
         - https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.11.0-cp35-cp35m-linux_x86_64.whl; 'linux' in sys_platform
         - https://storage.googleapis.com/tensorflow/mac/gpu/tensorflow-0.11.0-py3-none-any.whl; sys_platform == 'darwin'
+        - numpy-stl==2.2.0
+        - nibabel==2.1.0
+        - pylru==1.0.9
