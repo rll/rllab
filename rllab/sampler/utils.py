@@ -3,7 +3,8 @@ from rllab.misc import tensor_utils
 import time
 
 
-def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1):
+def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1,
+            always_return_paths=False):
     observations = []
     actions = []
     rewards = []
@@ -30,7 +31,7 @@ def rollout(env, agent, max_path_length=np.inf, animated=False, speedup=1):
             env.render()
             timestep = 0.05
             time.sleep(timestep / speedup)
-    if animated:
+    if animated and not always_return_paths:
         return
 
     return dict(
