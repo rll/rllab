@@ -1,5 +1,6 @@
 import numpy as np
 import os.path as osp
+from cached_property import cached_property
 
 from rllab import spaces
 from rllab.envs.base import Env
@@ -86,7 +87,7 @@ class MujocoEnv(Env):
         self.reset()
         super(MujocoEnv, self).__init__()
 
-    @property
+    @cached_property
     @overrides
     def action_space(self):
         bounds = self.model.actuator_ctrlrange
@@ -94,7 +95,7 @@ class MujocoEnv(Env):
         ub = bounds[:, 1]
         return spaces.Box(lb, ub)
 
-    @property
+    @cached_property
     @overrides
     def observation_space(self):
         shp = self.get_current_obs().shape
