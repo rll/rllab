@@ -107,8 +107,7 @@ class GaussianLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
             self.f_step_mean_std = tensor_utils.compile_function(
                 [
                     flat_input_var,
-                    mean_network.step_prev_hidden_layer.input_var,
-                    mean_network.step_prev_cell_layer.input_var
+                    mean_network.step_prev_state_layer.input_var,
                 ],
                 L.get_output([
                     mean_network.step_output_layer,
@@ -196,7 +195,8 @@ class GaussianLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
         else:
             all_input = flat_obs
         # probs, hidden_vec, cell_vec = self.f_step_prob(all_input, self.prev_hiddens, self.prev_cells)
-        means, log_stds, hidden_vec, cell_vec = self.f_step_mean_std(all_input, self.prev_hiddens, self.prev_cells)
+        means, log_stds, hidden_vec, cell_vec = self.f_step_mean_std(
+            all_input, np.hstack([self.prev_hiddens, self.prev_cells]))
         rnd = np.random.normal(size=means.shape)
         actions = rnd * np.exp(log_stds) + means
         prev_actions = self.prev_actions

@@ -108,7 +108,7 @@ class GaussianGRUPolicy(StochasticPolicy, LayersPowered, Serializable):
             self.f_step_mean_std = tensor_utils.compile_function(
                 [
                     flat_input_var,
-                    mean_network.step_prev_hidden_layer.input_var,
+                    mean_network.step_prev_state_layer.input_var,
                 ],
                 L.get_output([
                     mean_network.step_output_layer,
