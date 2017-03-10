@@ -1,5 +1,6 @@
 from .env_spec import EnvSpec
 import collections
+from cached_property import cached_property
 
 
 class Env(object):
@@ -59,7 +60,7 @@ class Env(object):
         """
         pass
 
-    @property
+    @cached_property
     def spec(self):
         return EnvSpec(
             observation_space=self.observation_space,
