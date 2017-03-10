@@ -10,15 +10,15 @@ class Serializable(object):
     def quick_init(self, locals_):
         if getattr(self, "_serializable_initialized", False):
             return
-        spec = inspect.getargspec(self.__init__)
+        spec = inspect.getfullargspec(self.__init__)
         # Exclude the first "self" parameter
         in_order_args = [locals_[arg] for arg in spec.args][1:]
         if spec.varargs:
             varargs = locals_[spec.varargs]
         else:
             varargs = tuple()
-        if spec.keywords:
-            kwargs = locals_[spec.keywords]
+        if spec.varkw:
+            kwargs = locals_[spec.varkw]
         else:
             kwargs = dict()
         self.__args = tuple(in_order_args) + varargs
