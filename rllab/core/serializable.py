@@ -12,16 +12,16 @@ class Serializable(object):
         if getattr(self, "_serializable_initialized", False):
             return
         if sys.version_info >= (3, 0):
-            spec = inspect.getargspec(self.__init__)
-            if spec.keywords:
-                kwargs = locals_[spec.keywords]
-            else:
-                kwargs = dict()
-        else:
             spec = inspect.getfullargspec(self.__init__)
             # Exclude the first "self" parameter
             if spec.varkw:
                 kwargs = locals_[spec.varkw]
+            else:
+                kwargs = dict()
+        else:
+            spec = inspect.getargspec(self.__init__)
+            if spec.keywords:
+                kwargs = locals_[spec.keywords]
             else:
                 kwargs = dict()
         if spec.varargs:
