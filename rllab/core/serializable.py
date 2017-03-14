@@ -1,4 +1,5 @@
 import inspect
+import sys
 
 
 class Serializable(object):
@@ -10,17 +11,24 @@ class Serializable(object):
     def quick_init(self, locals_):
         if getattr(self, "_serializable_initialized", False):
             return
-        spec = inspect.getargspec(self.__init__)
-        # Exclude the first "self" parameter
-        in_order_args = [locals_[arg] for arg in spec.args][1:]
+        if sys.version_info >= (3, 0):
+            spec = inspect.getargspec(self.__init__)
+            if spec.keywords:
+                kwargs = locals_[spec.keywords]
+            else:
+                kwargs = dict()
+        else:
+            spec = inspect.getfullargspec(self.__init__)
+            # Exclude the first "self" parameter
+            if spec.varkw:
+                kwargs = locals_[spec.varkw]
+            else:
+                kwargs = dict()
         if spec.varargs:
             varargs = locals_[spec.varargs]
         else:
             varargs = tuple()
-        if spec.keywords:
-            kwargs = locals_[spec.keywords]
-        else:
-            kwargs = dict()
+        in_order_args = [locals_[arg] for arg in spec.args][1:]
         self.__args = tuple(in_order_args) + varargs
         self.__kwargs = kwargs
         setattr(self, "_serializable_initialized", True)
