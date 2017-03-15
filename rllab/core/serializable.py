@@ -12,16 +12,16 @@ class Serializable(object):
         if getattr(self, "_serializable_initialized", False):
             return
         if sys.version_info >= (3, 0):
-            spec = inspect.getargspec(self.__init__)
-            if spec.keywords:
-                kwargs = locals_[spec.keywords]
-            else:
-                kwargs = dict()
-        else:
             spec = inspect.getfullargspec(self.__init__)
             # Exclude the first "self" parameter
             if spec.varkw:
                 kwargs = locals_[spec.varkw]
+            else:
+                kwargs = dict()
+        else:
+            spec = inspect.getargspec(self.__init__)
+            if spec.keywords:
+                kwargs = locals_[spec.keywords]
             else:
                 kwargs = dict()
         if spec.varargs:
@@ -38,7 +38,11 @@ class Serializable(object):
 
     def __setstate__(self, d):
         # convert all __args to keyword-based arguments
-        in_order_args = inspect.getargspec(self.__init__).args[1:]
+        if sys.version_info >= (3, 0):
+            spec = inspect.getfullargspec(self.__init__)
+        else:
+            spec = inspect.getargspec(self.__init__)
+        in_order_args = spec.args[1:]
         out = type(self)(**dict(zip(in_order_args, d["__args"]), **d["__kwargs"]))
         self.__dict__.update(out.__dict__)
 
