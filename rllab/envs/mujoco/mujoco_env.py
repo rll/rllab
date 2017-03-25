@@ -197,9 +197,18 @@ class MujocoEnv(Env):
             self.viewer.set_model(self.model)
         return self.viewer
 
-    def render(self):
-        viewer = self.get_viewer()
-        viewer.loop_once()
+    def render(self, close=False, mode='human', config=None):
+        if mode == 'human':
+            viewer = self.get_viewer(config=config)
+            viewer.loop_once()
+        elif mode == 'rgb_array':
+            viewer = self.get_viewer(config=config)
+            viewer.loop_once()
+            # self.get_viewer(config=config).render()
+            data, width, height = self.get_viewer(config=config).get_image()
+            return np.fromstring(data, dtype='uint8').reshape(height, width, 3)[::-1,:,:]
+        if close:
+            self.stop_viewer()
 
     def start_viewer(self):
         viewer = self.get_viewer()
