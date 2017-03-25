@@ -204,8 +204,11 @@ class MazeEnv(ProxyEnv, Serializable):
         First it tries to use a get_ori from the wrapped env. If not successfull, falls
         back to the default based on the ORI_IND specified in Maze (not accurate for quaternions)
         """
+        obj = self.wrapped_env
+        while not hasattr(obj, 'get_ori') and hasattr(obj, 'wrapped_env'):
+            obj = obj.wrapped_env
         try:
-            return self.wrapped_env.wrapped_get_ori()
+            return obj.get_ori()
         except (NotImplementedError, AttributeError) as e:
             pass
         return self.wrapped_env.model.data.qpos[self.__class__.ORI_IND]
