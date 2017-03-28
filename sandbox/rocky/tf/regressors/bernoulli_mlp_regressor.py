@@ -74,8 +74,8 @@ class BernoulliMLPRegressor(LayersPowered, Serializable):
             ys_var = tf.placeholder(dtype=tf.float32, shape=(None, output_dim), name="ys")
             old_p_var = tf.placeholder(dtype=tf.float32, shape=(None, output_dim), name="old_p")
 
-            x_mean_var = tf.get_variable(name="x_mean", initializer=tf.zeros_initializer, shape=(1,) + input_shape)
-            x_std_var = tf.get_variable(name="x_std", initializer=tf.ones_initializer, shape=(1,) + input_shape)
+            x_mean_var = tf.get_variable(name="x_mean", initializer=tf.zeros_initializer(), shape=(1,) + input_shape)
+            x_std_var = tf.get_variable(name="x_std", initializer=tf.ones_initializer(), shape=(1,) + input_shape)
 
             normalized_xs_var = (xs_var - x_mean_var) / x_std_var
 
