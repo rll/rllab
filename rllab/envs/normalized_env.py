@@ -18,8 +18,8 @@ class NormalizedEnv(ProxyEnv, Serializable):
             obs_alpha=0.001,
             reward_alpha=0.001,
     ):
-        ProxyEnv.__init__(self, env)
         Serializable.quick_init(self, locals())
+        ProxyEnv.__init__(self, env)
         self._scale_reward = scale_reward
         self._normalize_obs = normalize_obs
         self._normalize_reward = normalize_reward

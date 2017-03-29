@@ -61,7 +61,7 @@ class CategoricalGRUPolicy(StochasticPolicy, LayersPowered, Serializable):
                     name="reshape_feature",
                     op=lambda flat_feature, input: tf.reshape(
                         flat_feature,
-                        tf.pack([tf.shape(input)[0], tf.shape(input)[1], feature_dim])
+                        tf.stack([tf.shape(input)[0], tf.shape(input)[1], feature_dim])
                     ),
                     shape_op=lambda _, input_shape: (input_shape[0], input_shape[1], feature_dim)
                 )
@@ -117,11 +117,11 @@ class CategoricalGRUPolicy(StochasticPolicy, LayersPowered, Serializable):
     def dist_info_sym(self, obs_var, state_info_vars):
         n_batches = tf.shape(obs_var)[0]
         n_steps = tf.shape(obs_var)[1]
-        obs_var = tf.reshape(obs_var, tf.pack([n_batches, n_steps, -1]))
+        obs_var = tf.reshape(obs_var, tf.stack([n_batches, n_steps, -1]))
         obs_var = tf.cast(obs_var, tf.float32)
         if self.state_include_action:
             prev_action_var = tf.cast(state_info_vars["prev_action"], tf.float32)
-            all_input_var = tf.concat(2, [obs_var, prev_action_var])
+            all_input_var = tf.concat(axis=2, values=[obs_var, prev_action_var])
         else:
             all_input_var = obs_var
         if self.feature_network is None:

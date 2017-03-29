@@ -59,7 +59,7 @@ class DiagonalGaussian(Distribution):
                     tf.square(old_std) - tf.square(new_std)
         denominator = 2 * tf.square(new_std) + 1e-8
         return tf.reduce_sum(
-            numerator / denominator + new_log_stds - old_log_stds, reduction_indices=-1)
+            numerator / denominator + new_log_stds - old_log_stds, axis=-1)
 
     def likelihood_ratio_sym(self, x_var, old_dist_info_vars, new_dist_info_vars):
         logli_new = self.log_likelihood_sym(x_var, new_dist_info_vars)
@@ -70,8 +70,8 @@ class DiagonalGaussian(Distribution):
         means = dist_info_vars["mean"]
         log_stds = dist_info_vars["log_std"]
         zs = (x_var - means) / tf.exp(log_stds)
-        return - tf.reduce_sum(log_stds, reduction_indices=-1) - \
-               0.5 * tf.reduce_sum(tf.square(zs), reduction_indices=-1) - \
+        return - tf.reduce_sum(log_stds, axis=-1) - \
+               0.5 * tf.reduce_sum(tf.square(zs), axis=-1) - \
                0.5 * self.dim * np.log(2 * np.pi)
 
     def sample(self, dist_info):

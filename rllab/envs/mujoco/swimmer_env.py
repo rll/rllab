@@ -10,6 +10,7 @@ from rllab.misc import autoargs
 class SwimmerEnv(MujocoEnv, Serializable):
 
     FILE = 'swimmer.xml'
+    ORI_IND = 2
 
     @autoargs.arg('ctrl_cost_coeff', type=float,
                   help='cost coefficient for controls')
@@ -28,6 +29,9 @@ class SwimmerEnv(MujocoEnv, Serializable):
             self.get_body_com("torso").flat,
         ]).reshape(-1)
 
+    def get_ori(self):
+        return self.model.data.qpos[self.__class__.ORI_IND]
+
     def step(self, action):
         self.forward_dynamics(action)
         next_obs = self.get_current_obs()
@@ -42,11 +46,17 @@ class SwimmerEnv(MujocoEnv, Serializable):
 
     @overrides
     def log_diagnostics(self, paths):
-        progs = [
-            path["observations"][-1][-3] - path["observations"][0][-3]
-            for path in paths
-        ]
-        logger.record_tabular('AverageForwardProgress', np.mean(progs))
-        logger.record_tabular('MaxForwardProgress', np.max(progs))
-        logger.record_tabular('MinForwardProgress', np.min(progs))
-        logger.record_tabular('StdForwardProgress', np.std(progs))
+        if len(paths) > 0:
+            progs = [
+                path["observations"][-1][-3] - path["observations"][0][-3]
+                for path in paths
+            ]
+            logger.record_tabular('AverageForwardProgress', np.mean(progs))
+            logger.record_tabular('MaxForwardProgress', np.max(progs))
+            logger.record_tabular('MinForwardProgress', np.min(progs))
+            logger.record_tabular('StdForwardProgress', np.std(progs))
+        else:
+            logger.record_tabular('AverageForwardProgress', np.nan)
+            logger.record_tabular('MaxForwardProgress', np.nan)
+            logger.record_tabular('MinForwardProgress', np.nan)
+            logger.record_tabular('StdForwardProgress', np.nan)
