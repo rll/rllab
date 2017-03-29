@@ -24,7 +24,7 @@ class RecurrentCategorical(Distribution):
         # Assume layout is N * T * A
         return tf.reduce_sum(
             old_prob_var * (tf.log(old_prob_var + TINY) - tf.log(new_prob_var + TINY)),
-            reduction_indices=2
+            axis=2
         )
 
     def kl(self, old_dist_info, new_dist_info):
@@ -44,9 +44,9 @@ class RecurrentCategorical(Distribution):
         # Assume layout is N * T * A
         a_dim = tf.shape(x_var)[2]
         flat_ratios = self._cat.likelihood_ratio_sym(
-            tf.reshape(x_var, tf.pack([-1, a_dim])),
-            dict(prob=tf.reshape(old_prob_var, tf.pack([-1, a_dim]))),
-            dict(prob=tf.reshape(new_prob_var, tf.pack([-1, a_dim])))
+            tf.reshape(x_var, tf.stack([-1, a_dim])),
+            dict(prob=tf.reshape(old_prob_var, tf.stack([-1, a_dim]))),
+            dict(prob=tf.reshape(new_prob_var, tf.stack([-1, a_dim])))
         )
         return tf.reshape(flat_ratios, tf.shape(old_prob_var)[:2])
 
@@ -64,8 +64,8 @@ class RecurrentCategorical(Distribution):
         a_dim = tf.shape(probs)[2]
         # a_dim = TT.printing.Print("lala")(a_dim)
         flat_logli = self._cat.log_likelihood_sym(
-            tf.reshape(xs, tf.pack([-1, a_dim])),
-            dict(prob=tf.reshape(probs, tf.pack((-1, a_dim))))
+            tf.reshape(xs, tf.stack([-1, a_dim])),
+            dict(prob=tf.reshape(probs, tf.stack((-1, a_dim))))
         )
         return tf.reshape(flat_logli, tf.shape(probs)[:2])
 

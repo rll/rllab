@@ -9,8 +9,8 @@ from sandbox.rocky.tf.core.layers_powered import LayersPowered
 
 class MLP(LayersPowered, Serializable):
     def __init__(self, name, output_dim, hidden_sizes, hidden_nonlinearity,
-                 output_nonlinearity, hidden_W_init=L.XavierUniformInitializer(), hidden_b_init=tf.zeros_initializer,
-                 output_W_init=L.XavierUniformInitializer(), output_b_init=tf.zeros_initializer,
+                 output_nonlinearity, hidden_W_init=L.XavierUniformInitializer(), hidden_b_init=tf.zeros_initializer(),
+                 output_W_init=L.XavierUniformInitializer(), output_b_init=tf.zeros_initializer(),
                  input_var=None, input_layer=None, input_shape=None, batch_normalization=False, weight_normalization=False,
                  ):
 
@@ -82,8 +82,8 @@ class ConvNetwork(LayersPowered, Serializable):
     def __init__(self, name, input_shape, output_dim,
                  conv_filters, conv_filter_sizes, conv_strides, conv_pads,
                  hidden_sizes, hidden_nonlinearity, output_nonlinearity,
-                 hidden_W_init=L.XavierUniformInitializer(), hidden_b_init=tf.zeros_initializer,
-                 output_W_init=L.XavierUniformInitializer(), output_b_init=tf.zeros_initializer,
+                 hidden_W_init=L.XavierUniformInitializer(), hidden_b_init=tf.zeros_initializer(),
+                 output_W_init=L.XavierUniformInitializer(), output_b_init=tf.zeros_initializer(),
                  input_var=None, input_layer=None, batch_normalization=False, weight_normalization=False):
         Serializable.quick_init(self, locals())
         """
@@ -211,7 +211,7 @@ class GRUNetwork(object):
             l_output = L.OpLayer(
                 l_output_flat,
                 op=lambda flat_output, l_input:
-                tf.reshape(flat_output, tf.pack((tf.shape(l_input)[0], tf.shape(l_input)[1], -1))),
+                tf.reshape(flat_output, tf.stack((tf.shape(l_input)[0], tf.shape(l_input)[1], -1))),
                 shape_op=lambda flat_output_shape, l_input_shape:
                 (l_input_shape[0], l_input_shape[1], flat_output_shape[-1]),
                 extras=[l_in],
@@ -323,7 +323,7 @@ class LSTMNetwork(object):
             l_output = L.OpLayer(
                 l_output_flat,
                 op=lambda flat_output, l_input:
-                tf.reshape(flat_output, tf.pack((tf.shape(l_input)[0], tf.shape(l_input)[1], -1))),
+                tf.reshape(flat_output, tf.stack((tf.shape(l_input)[0], tf.shape(l_input)[1], -1))),
                 shape_op=lambda flat_output_shape, l_input_shape:
                 (l_input_shape[0], l_input_shape[1], flat_output_shape[-1]),
                 extras=[l_in],
@@ -408,7 +408,7 @@ class LSTMNetwork(object):
 
     @property
     def state_init_param(self):
-        return tf.concat(0, [self._hid_init_param, self._cell_init_param])
+        return tf.concat(axis=0, values=[self._hid_init_param, self._cell_init_param])
 
 
 class ConvMergeNetwork(LayersPowered, Serializable):
@@ -425,8 +425,8 @@ class ConvMergeNetwork(LayersPowered, Serializable):
     def __init__(self, name, input_shape, extra_input_shape, output_dim, hidden_sizes,
                  conv_filters, conv_filter_sizes, conv_strides, conv_pads,
                  extra_hidden_sizes=None,
-                 hidden_W_init=L.XavierUniformInitializer(), hidden_b_init=tf.zeros_initializer,
-                 output_W_init=L.XavierUniformInitializer(), output_b_init=tf.zeros_initializer,
+                 hidden_W_init=L.XavierUniformInitializer(), hidden_b_init=tf.zeros_initializer(),
+                 output_W_init=L.XavierUniformInitializer(), output_b_init=tf.zeros_initializer(),
                  hidden_nonlinearity=tf.nn.relu,
                  output_nonlinearity=None,
                  input_var=None, input_layer=None):

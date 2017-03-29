@@ -10,7 +10,7 @@ def worker_init_tf(G):
 
 
 def worker_init_tf_vars(G):
-    G.sess.run(tf.initialize_all_variables())
+    G.sess.run(tf.global_variables_initializer())
 
 
 class BatchSampler(BaseSampler):
