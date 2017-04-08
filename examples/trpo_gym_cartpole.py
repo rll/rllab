@@ -3,13 +3,17 @@ from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
 from rllab.envs.gym_env import GymEnv
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import run_experiment_lite
-from rllab.policies.gaussian_mlp_policy import GaussianMLPPolicy
+from rllab.policies.categorical_mlp_policy import CategoricalMLPPolicy
 
 
 def run_task(*_):
-    env = normalize(GymEnv("Pendulum-v0"))
+    # Please note that different environments with different action spaces may
+    # require different policies. For example with a Discrete action space, a
+    # CategoricalMLPPolicy works, but for a Box action space may need to use
+    # a GaussianMLPPolicy (see the trpo_gym_pendulum.py example)
+    env = normalize(GymEnv("CartPole-v0"))
 
-    policy = GaussianMLPPolicy(
+    policy = CategoricalMLPPolicy(
         env_spec=env.spec,
         # The neural network policy should have two hidden layers, each with 32 hidden units.
         hidden_sizes=(8, 8)
