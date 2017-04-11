@@ -18,6 +18,6 @@ def process_result(exp_prefix, exp_name):
     return dict(
         max_score=max_score,
         max_iter=max_ix,
-        scores=curve,
+        scores=curve, # returning the curve allows you to plot best, worst etc curve later
         loss=-max_score
         )
