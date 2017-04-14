@@ -26,6 +26,7 @@ dependencies:
     - pytorch==0.1.9
     - torchvision==0.1.6
     - mpi4py
+    - pandas
     - pip:
         - Pillow
         - atari-py
@@ -59,3 +60,5 @@ dependencies:
         - numpy-stl==2.2.0
         - nibabel==2.1.0
         - pylru==1.0.9
+        - hyperopt
+        - polling
