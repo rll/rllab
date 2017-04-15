@@ -12,7 +12,7 @@ from rllab.spaces import Discrete
 
 import numpy as np
 
-class CategoricalMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
+class CategoricalMLPPolicy(StochasticPolicy, LasagnePowered):
     def __init__(
             self,
             env_spec,

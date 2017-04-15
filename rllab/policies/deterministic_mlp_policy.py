@@ -9,7 +9,7 @@ from rllab.misc import ext
 from rllab.policies.base import Policy
 
 
-class DeterministicMLPPolicy(Policy, LasagnePowered, Serializable):
+class DeterministicMLPPolicy(Policy, LasagnePowered):
     def __init__(
             self,
             env_spec,

@@ -5,7 +5,7 @@ from rllab.policies.base import Policy
 from rllab.misc.overrides import overrides
 
 
-class UniformControlPolicy(Policy, Serializable):
+class UniformControlPolicy(Policy):
     def __init__(
             self,
             env_spec,

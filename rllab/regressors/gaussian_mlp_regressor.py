@@ -17,7 +17,7 @@ from rllab.distributions.diagonal_gaussian import DiagonalGaussian
 from rllab.misc.ext import iterate_minibatches_generic
 
 
-class GaussianMLPRegressor(LasagnePowered, Serializable):
+class GaussianMLPRegressor(LasagnePowered):
     """
     A class for performing regression by fitting a Gaussian distribution to the outputs.
     """

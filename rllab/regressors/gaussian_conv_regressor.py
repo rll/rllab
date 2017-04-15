@@ -17,7 +17,7 @@ from rllab.misc.ext import iterate_minibatches_generic
 from rllab.misc import logger
 
 
-class GaussianConvRegressor(LasagnePowered, Serializable):
+class GaussianConvRegressor(LasagnePowered):
     """
     A class for performing regression by fitting a Gaussian distribution to the outputs.
     """

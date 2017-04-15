@@ -7,7 +7,7 @@ from rllab.baselines.base import Baseline
 from rllab.regressors.gaussian_conv_regressor import GaussianConvRegressor
 
 
-class GaussianConvBaseline(Baseline, Parameterized, Serializable):
+class GaussianConvBaseline(Baseline, Parameterized):
 
     def __init__(
             self,
