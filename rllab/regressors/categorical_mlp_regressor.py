@@ -17,7 +17,7 @@ from rllab.optimizers.penalty_lbfgs_optimizer import PenaltyLbfgsOptimizer
 NONE = list()
 
 
-class CategoricalMLPRegressor(LasagnePowered, Serializable):
+class CategoricalMLPRegressor(LasagnePowered):
     """
     A class for performing regression (or classification, really) by fitting a categorical distribution to the outputs.
     Assumes that the outputs will be always a one hot vector.

@@ -10,7 +10,7 @@ from rllab.core.serializable import Serializable
 from rllab.misc import ext
 
 
-class ContinuousMLPQFunction(QFunction, LasagnePowered, Serializable):
+class ContinuousMLPQFunction(QFunction, LasagnePowered):
     def __init__(
             self,
             env_spec,

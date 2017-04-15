@@ -17,7 +17,7 @@ from rllab.distributions.diagonal_gaussian import DiagonalGaussian
 import theano.tensor as TT
 
 
-class GaussianMLPPolicy(StochasticPolicy, LasagnePowered, Serializable):
+class GaussianMLPPolicy(StochasticPolicy, LasagnePowered):
     def __init__(
             self,
             env_spec,

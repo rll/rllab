@@ -7,7 +7,7 @@ from rllab.misc.overrides import overrides
 from rllab.regressors.gaussian_mlp_regressor import GaussianMLPRegressor
 
 
-class GaussianMLPBaseline(Baseline, Parameterized, Serializable):
+class GaussianMLPBaseline(Baseline, Parameterized):
 
     def __init__(
             self,

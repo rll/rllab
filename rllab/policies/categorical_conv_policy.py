@@ -14,7 +14,7 @@ import numpy as np
 import lasagne.nonlinearities as NL
 
 
-class CategoricalConvPolicy(StochasticPolicy, LasagnePowered, Serializable):
+class CategoricalConvPolicy(StochasticPolicy, LasagnePowered):
     def __init__(
             self,
             name,
