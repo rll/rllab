@@ -101,6 +101,7 @@ class BatchPolopt(RLAlgorithm):
         return self.sampler.process_samples(itr, paths)
 
     def train(self, sess=None):
+        created_session = True if (sess is None) else False
         if sess is None:
             sess = tf.Session()
             sess.__enter__()
@@ -134,6 +135,8 @@ class BatchPolopt(RLAlgorithm):
                         input("Plotting evaluation run: Press Enter to "
                               "continue...")
         self.shutdown_worker()
+        if created_session:
+            sess.close()
 
     def log_diagnostics(self, paths):
         self.env.log_diagnostics(paths)
