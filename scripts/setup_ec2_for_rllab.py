@@ -37,18 +37,18 @@ AWS_S3_PATH = "s3://$s3_bucket_name/rllab/experiments"
 AWS_CODE_SYNC_S3_PATH = "s3://$s3_bucket_name/rllab/code"
 
 ALL_REGION_AWS_IMAGE_IDS = {
-    "ap-northeast-1": "ami-883d46ef",
-    "ap-northeast-2": "ami-4df22323",
-    "ap-south-1": "ami-bccbbdd3",
-    "ap-southeast-1": "ami-06298365",
-    "ap-southeast-2": "ami-5a757239",
-    "eu-central-1": "ami-0347886c",
-    "eu-west-1": "ami-82c995e4",
-    "sa-east-1": "ami-0f7d1863",
-    "us-east-1": "ami-d46094c2",
-    "us-east-2": "ami-bf5277da",
-    "us-west-1": "ami-fa693b9a",
-    "us-west-2": "ami-ded866be"
+    "ap-northeast-1": "ami-002f0167",
+    "ap-northeast-2": "ami-590bd937",
+    "ap-south-1": "ami-77314318",
+    "ap-southeast-1": "ami-1610a975",
+    "ap-southeast-2": "ami-9dd4ddfe",
+    "eu-central-1": "ami-63af720c",
+    "eu-west-1": "ami-41484f27",
+    "sa-east-1": "ami-b7234edb",
+    "us-east-1": "ami-83f26195",
+    "us-east-2": "ami-66614603",
+    "us-west-1": "ami-576f4b37",
+    "us-west-2": "ami-b8b62bd8"
 }
 
 AWS_IMAGE_ID = ALL_REGION_AWS_IMAGE_IDS[AWS_REGION_NAME]
