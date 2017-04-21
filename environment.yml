@@ -1,7 +1,7 @@
 name: rllab3
 channels:
     - https://conda.anaconda.org/kne 
-    - https://conda.binstar.org/tlatorre 
+    - https://conda.anaconda.org/tlatorre 
     - https://conda.anaconda.org/cjs14
     - https://conda.anaconda.org/menpo
     - jjhelmus
