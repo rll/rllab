@@ -9,8 +9,6 @@ import sandbox.rocky.tf.core.layers as L
 from sandbox.rocky.tf.optimizers.conjugate_gradient_optimizer import ConjugateGradientOptimizer, FiniteDifferenceHvp
 from rllab.misc.instrument import stub, run_experiment_lite
 
-stub(globals())
-
 env = TfEnv(normalize(CartpoleEnv()))
 
 policy = GaussianLSTMPolicy(
@@ -33,8 +31,4 @@ algo = TRPO(
     step_size=0.01,
     optimizer=ConjugateGradientOptimizer(hvp_approach=FiniteDifferenceHvp(base_eps=1e-5))
 )
-run_experiment_lite(
-    algo.train(),
-    n_parallel=4,
-    seed=1,
-)
+algo.train()
