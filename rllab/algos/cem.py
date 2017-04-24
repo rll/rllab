@@ -1,3 +1,5 @@
+from itertools import chain
+
 from rllab.algos.base import RLAlgorithm
 
 import numpy as np
@@ -9,23 +11,39 @@ from rllab.core.serializable import Serializable
 import rllab.misc.logger as logger
 import rllab.plotter as plotter
 
-
+def _get_stderr_lb(x):
+    mu = np.mean(x, 0)
+    stderr = np.std(x, axis=0, ddof=1 if len(x) > 1 else 0) / np.sqrt(len(x))
+    return mu - stderr
+    
 def _worker_rollout_policy(G, args):
     sample_std = args["sample_std"].flatten()
     cur_mean = args["cur_mean"].flatten()
+    n_evals = args["n_evals"]
     K = len(cur_mean)
     params = np.random.standard_normal(K) * sample_std + cur_mean
     G.policy.set_param_values(params)
-    path = rollout(G.env, G.policy, args["max_path_length"])
-    path["returns"] = discount_cumsum(path["rewards"], args["discount"])
-    path["undiscounted_return"] = sum(path["rewards"])
+    paths, returns, undiscounted_returns = [], [], []
+    for _ in range(n_evals):
+        path = rollout(G.env, G.policy, args["max_path_length"])
+        path["returns"] = discount_cumsum(path["rewards"], args["discount"])
+        path["undiscounted_return"] = sum(path["rewards"])
+        paths.append(path)
+        returns.append(path["returns"])
+        undiscounted_returns.append(path["undiscounted_return"])
+    
+    result_path = {'full_paths':paths}
+    result_path['undiscounted_return'] = _get_stderr_lb(undiscounted_returns)
+    result_path['returns'] = _get_stderr_lb(returns)
+    
+    # not letting n_evals count towards below cases since n_evals is multiple eval for single paramset
     if args["criterion"] == "samples":
         inc = len(path["rewards"])
     elif args["criterion"] == "paths":
         inc = 1
     else:
         raise NotImplementedError
-    return (params, path), inc
+    return (params, result_path), inc
 
 
 class CEM(RLAlgorithm, Serializable):
@@ -43,6 +61,7 @@ class CEM(RLAlgorithm, Serializable):
             extra_std=1.,
             extra_decay_time=100,
             plot=False,
+            n_evals=1,
             **kwargs
     ):
         """
@@ -57,6 +76,7 @@ class CEM(RLAlgorithm, Serializable):
         :param extra_decay_time: Iterations that it takes to decay extra std
         :param n_samples: #of samples from param distribution
         :param best_frac: Best fraction of the sampled params
+        :param n_evals: # of evals per sample from the param distr. returned score is mean - stderr of evals
         :return:
         """
         Serializable.quick_init(self, locals())
@@ -72,6 +92,7 @@ class CEM(RLAlgorithm, Serializable):
         self.discount = discount
         self.max_path_length = max_path_length
         self.n_itr = n_itr
+        self.n_evals = n_evals
 
     def train(self):
         parallel_sampler.populate_task(self.env, self.policy)
@@ -100,7 +121,8 @@ class CEM(RLAlgorithm, Serializable):
                           sample_std=sample_std,
                           max_path_length=self.max_path_length,
                           discount=self.discount,
-                          criterion=criterion),)
+                          criterion=criterion,
+                          n_evals=self.n_evals),)
             )
             xs = np.asarray([info[0] for info in infos])
             paths = [info[1] for info in infos]
@@ -131,6 +153,7 @@ class CEM(RLAlgorithm, Serializable):
             logger.record_tabular('NumTrajs',
                                   len(paths))
             self.policy.set_param_values(best_x)
+            paths = list(chain(*[d['full_paths'] for d in paths])) #flatten paths for the case n_evals > 1
             self.env.log_diagnostics(paths)
             self.policy.log_diagnostics(paths)
             logger.save_itr_params(itr, dict(
