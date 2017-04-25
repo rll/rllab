@@ -1,0 +1,102 @@
+<!-- Cheetah Model
+
+    The state space is populated with joints in the order that they are
+    defined in this file. The actuators also operate on joints.
+
+    State-Space (name/joint/parameter):
+        - rootx     slider      position (m)
+        - rootz     slider      position (m)
+        - rooty     hinge       angle (rad)
+        - bthigh    hinge       angle (rad)
+        - bshin     hinge       angle (rad)
+        - bfoot     hinge       angle (rad)
+        - fthigh    hinge       angle (rad)
+        - fshin     hinge       angle (rad)
+        - ffoot     hinge       angle (rad)
+        - rootx     slider      velocity (m/s)
+        - rootz     slider      velocity (m/s)
+        - rooty     hinge       angular velocity (rad/s)
+        - bthigh    hinge       angular velocity (rad/s)
+        - bshin     hinge       angular velocity (rad/s)
+        - bfoot     hinge       angular velocity (rad/s)
+        - fthigh    hinge       angular velocity (rad/s)
+        - fshin     hinge       angular velocity (rad/s)
+        - ffoot     hinge       angular velocity (rad/s)
+
+    Actuators (name/actuator/parameter):
+        - bthigh    hinge       torque (N m)
+        - bshin     hinge       torque (N m)
+        - bfoot     hinge       torque (N m)
+        - fthigh    hinge       torque (N m)
+        - fshin     hinge       torque (N m)
+        - ffoot     hinge       torque (N m)
+
+-->
+<%
+    difficulty = opts.get("difficulty", 1.0)
+    texturedir = opts.get("texturedir", "/tmp/mujoco_textures")
+    hfield_file = opts.get("hfield_file", "/tmp/mujoco_terrains/hills.png")
+%>
+<mujoco model='cheetah'>
+  <compiler inertiafromgeom='true' coordinate='local' angle='radian' settotalmass='14' texturedir="${texturedir}"/>
+  <default>
+    <joint limited='true' damping='.01' armature='.1' stiffness='8' solreflimit='.02 1' solimplimit='0 .8 .03' />
+    <geom contype='1' conaffinity='0' condim='3' friction='.4 .1 .1' rgba='0.8 0.6 .4 1' solimp='0.0 0.8 0.01' solref='0.02 1' />
+    <motor ctrlrange='-1 1' ctrllimited='true' />
+  </default>
+  <size nstack='300000' nuser_geom='1' />
+  <option timestep='0.01' gravity='0 0 -9.81' />
+  <asset>
+    <texture type="skybox" builtin="gradient" width="100" height="100" rgb1="1 1 1" rgb2="0 0 0" />
+    <texture name="texgeom" type="cube" builtin="flat" mark="cross" width="127" height="1278" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" markrgb="1 1 1" random="0.01" />
+    <texture name="texplane" type="2d" builtin="checker" rgb1="0 0 0" rgb2="0.8 0.8 0.8" width="100" height="100" />
+    <texture name="hilltexture" file="hills_texture.png" height="40" rgb1="0.62 0.81 0.55" rgb2="0.62 0.81 0.55" type="2d" width="40"/>
+    <material name="MatPlane" reflectance="0.0" shininess="1" specular="1" texrepeat="1 1" texture="hilltexture"/>
+    <material name='geom' texture="texgeom" texuniform="true" />
+    <hfield name="hill" file="${hfield_file}" size="40 40 ${difficulty} 0.1"/>
+  </asset>
+  <worldbody>
+    <light directional="true" cutoff="100" exponent="1" diffuse="1 1 1" specular=".1 .1 .1" pos="0 0 1.3" dir="-0 0 -1.3" />
+    <geom name="floor" conaffinity="1" condim="3" material="MatPlane" pos="0 0 -0.1" rgba="0.8 0.9 0.8 1" size="40 40 0.1" type="hfield" hfield="hill"/>
+    <body name='torso' pos='0 0 .7'>
+      <joint name='rootx' type='slide' pos='0 0 0' axis='1 0 0' limited='false' damping='0' armature='0' stiffness='0' />
+      <joint name='rootz' type='slide' pos='0 0 0' axis='0 0 1' limited='false' damping='0' armature='0' stiffness='0' />
+      <joint name='rooty' type='hinge' pos='0 0 0' axis='0 1 0' limited='false' damping='0' armature='0' stiffness='0' />
+      <geom name='torso' type='capsule' fromto='-.5 0 0 .5 0 0' size='0.046' />
+      <geom name='head' type='capsule' pos='.6 0 .1' axisangle='0 1 0 .87' size='0.046 .15' />
+      <!-- <site name='tip'  pos='.15 0 .11'/> -->
+      <body name='bthigh' pos='-.5 0 0'>
+        <joint name='bthigh' type='hinge' pos='0 0 0' axis='0 1 0' range='-.52 1.05' stiffness='240' damping='6' />
+        <geom name='bthigh' type='capsule' pos='.1 0 -.13' axisangle='0 1 0 -3.8' size='0.046 .145' />
+        <body name='bshin' pos='.16 0 -.25'>
+          <joint name='bshin' type='hinge' pos='0 0 0' axis='0 1 0' range='-.785 .785' stiffness='180' damping='4.5' />
+          <geom name='bshin' type='capsule' pos='-.14 0 -.07' axisangle='0 1 0 -2.03' size='0.046 .15' rgba='0.9 0.6 0.6 1' />
+          <body name='bfoot' pos='-.28 0 -.14'>
+            <joint name='bfoot' type='hinge' pos='0 0 0' axis='0 1 0' range='-.4 .785' stiffness='120' damping='3' />
+            <geom name='bfoot' type='capsule' pos='.03 0 -.097' axisangle='0 1 0 -.27' size='0.046 .094' rgba='0.9 0.6 0.6 1' />
+          </body>
+        </body>
+      </body>
+      <body name='fthigh' pos='.5 0 0'>
+        <joint name='fthigh' type='hinge' pos='0 0 0' axis='0 1 0' range='-1 .7' stiffness='180' damping='4.5' />
+        <geom name='fthigh' type='capsule' pos='-.07 0 -.12' axisangle='0 1 0 .52' size='0.046 .133' />
+        <body name='fshin' pos='-.14 0 -.24'>
+          <joint name='fshin' type='hinge' pos='0 0 0' axis='0 1 0' range='-1.2 .87' stiffness='120' damping='3' />
+          <geom name='fshin' type='capsule' pos='.065 0 -.09' axisangle='0 1 0 -.6' size='0.046 .106' rgba='0.9 0.6 0.6 1' />
+          <body name='ffoot' pos='.13 0 -.18'>
+            <joint name='ffoot' type='hinge' pos='0 0 0' axis='0 1 0' range='-.5 .5' stiffness='60' damping='1.5' />
+            <geom name='ffoot' type='capsule' pos='.045 0 -.07' axisangle='0 1 0 -.6' size='0.046 .07' rgba='0.9 0.6 0.6 1' />
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name='bthigh' joint='bthigh' gear='120' />
+    <motor name='bshin' joint='bshin' gear='90' />
+    <motor name='bfoot' joint='bfoot' gear='60' />
+    <motor name='fthigh' joint='fthigh' gear='120' />
+    <motor name='fshin' joint='fshin' gear='60' />
+    <motor name='ffoot' joint='ffoot' gear='30' />
+  </actuator>
+</mujoco>
