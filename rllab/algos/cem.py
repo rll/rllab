@@ -1,4 +1,4 @@
-from itertools import chain
+from itertools import chain, zip_longest
 
 from rllab.algos.base import RLAlgorithm
 
@@ -11,11 +11,21 @@ from rllab.core.serializable import Serializable
 import rllab.misc.logger as logger
 import rllab.plotter as plotter
 
+
 def _get_stderr_lb(x):
     mu = np.mean(x, 0)
     stderr = np.std(x, axis=0, ddof=1 if len(x) > 1 else 0) / np.sqrt(len(x))
     return mu - stderr
-    
+
+def _get_stderr_lb_varyinglens(x):
+    mus, stds, ns = [], [], []
+    for temp_list in zip_longest(*x, fillvalue=-1e6): # pad missing values with -1e6. Padding with None crashes np.ma.std
+        v = np.ma.masked_values(temp_list, -1e6)
+        mus.append(v.mean())
+        stds.append(v.std(ddof=1 if v.count() > 1 else 0))
+        ns.append(v.count())
+    return np.array(mus) - np.array(stds) / np.sqrt(ns)
+ 
 def _worker_rollout_policy(G, args):
     sample_std = args["sample_std"].flatten()
     cur_mean = args["cur_mean"].flatten()
@@ -34,8 +44,8 @@ def _worker_rollout_policy(G, args):
     
     result_path = {'full_paths':paths}
     result_path['undiscounted_return'] = _get_stderr_lb(undiscounted_returns)
-    result_path['returns'] = _get_stderr_lb(returns)
-    
+    result_path['returns'] = _get_stderr_lb_varyinglens(returns)
+       
     # not letting n_evals count towards below cases since n_evals is multiple eval for single paramset
     if args["criterion"] == "samples":
         inc = len(path["rewards"])
@@ -141,19 +151,20 @@ class CEM(RLAlgorithm, Serializable):
             logger.record_tabular('AverageReturn',
                                   np.mean(undiscounted_returns))
             logger.record_tabular('StdReturn',
-                                  np.mean(undiscounted_returns))
+                                  np.std(undiscounted_returns))
             logger.record_tabular('MaxReturn',
                                   np.max(undiscounted_returns))
             logger.record_tabular('MinReturn',
                                   np.min(undiscounted_returns))
             logger.record_tabular('AverageDiscountedReturn',
                                   np.mean(fs))
-            logger.record_tabular('AvgTrajLen',
-                                  np.mean([len(path['returns']) for path in paths]))
             logger.record_tabular('NumTrajs',
                                   len(paths))
-            self.policy.set_param_values(best_x)
             paths = list(chain(*[d['full_paths'] for d in paths])) #flatten paths for the case n_evals > 1
+            logger.record_tabular('AvgTrajLen',
+                                  np.mean([len(path['returns']) for path in paths]))
+            
+            self.policy.set_param_values(best_x)
             self.env.log_diagnostics(paths)
             self.policy.log_diagnostics(paths)
             logger.save_itr_params(itr, dict(
