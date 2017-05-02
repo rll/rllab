@@ -38,7 +38,8 @@ def run_experiment(argv):
     parser.add_argument('--snapshot_mode', type=str, default='all',
                         help='Mode to save the snapshot. Can be either "all" '
                              '(all iterations will be saved), "last" (only '
-                             'the last iteration will be saved), or "none" '
+                             'the last iteration will be saved), "gap" (every'
+                             '`snapshot_gap` iterations are saved), or "none" '
                              '(do not save snapshots)')
     parser.add_argument('--snapshot_gap', type=int, default=1,
                         help='Gap between snapshot iterations.')
