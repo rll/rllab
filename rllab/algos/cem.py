@@ -19,11 +19,11 @@ def _get_stderr_lb(x):
 
 def _get_stderr_lb_varyinglens(x):
     mus, stds, ns = [], [], []
-    for temp_list in zip_longest(*x, fillvalue=-1e6): # pad missing values with -1e6. Padding with None crashes np.ma.std
-        v = np.ma.masked_values(temp_list, -1e6)
-        mus.append(v.mean())
-        stds.append(v.std(ddof=1 if v.count() > 1 else 0))
-        ns.append(v.count())
+    for temp_list in zip_longest(*x, fillvalue=np.nan):
+        mus.append(np.nanmean(temp_list))
+        n = len(temp_list) - np.sum(np.isnan(temp_list))
+        stds.append(np.nanstd(temp_list, ddof=1 if n > 1 else 0))
+        ns.append(n)
     return np.array(mus) - np.array(stds) / np.sqrt(ns)
  
 def _worker_rollout_policy(G, args):
