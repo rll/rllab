@@ -1,7 +1,3 @@
-import lasagne
-import lasagne.layers as L
-import lasagne.nonlinearities as NL
-import lasagne.init as LI
 from rllab.core.serializable import Serializable
 from rllab.misc import ext
 from rllab.misc.overrides import overrides
