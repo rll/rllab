@@ -1052,13 +1052,14 @@ def s3_sync_code(config, dry=False, added_project_directories=[]):
 
         tar_cmd = ["tar", "-zcvf", file_path, "-C", config.PROJECT_PATH]
 
-        for path in added_project_directories:
-            tar_cmd.append("-C")
-            tar_cmd.append(path)
-
         for pattern in config.FAST_CODE_SYNC_IGNORES:
             tar_cmd += ["--exclude", pattern]
         tar_cmd += ["-h", "."]
+
+        for path in added_project_directories:
+            tar_cmd.append("-C")
+            tar_cmd.append(path)
+            tar_cmd += ["."]
 
         remote_path = "%s/%s" % (base, file_name)
 
