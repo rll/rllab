@@ -3,13 +3,13 @@ import os.path as osp
 import tempfile
 import xml.etree.ElementTree as ET
 from ctypes import byref
-
 import numpy as np
-import theano
 
+from rllab.misc import logger
 from rllab import spaces
 from rllab.core.serializable import Serializable
-from rllab.envs.base import Env, Step
+from rllab.envs.proxy_env import ProxyEnv
+from rllab.envs.base import Step
 from rllab.envs.mujoco.gather.embedded_viewer import EmbeddedViewer
 from rllab.envs.mujoco.mujoco_env import MODEL_DIR, BIG
 from rllab.misc import autoargs
@@ -131,7 +131,7 @@ class GatherViewer(MjViewer):
                 draw_rect(20 * (idx + 1), 60, 5, 50)
 
 
-class GatherEnv(Env, Serializable):
+class GatherEnv(ProxyEnv, Serializable):
     MODEL_CLASS = None
     ORI_IND = None
 
@@ -163,8 +163,11 @@ class GatherEnv(Env, Serializable):
             n_bins=10,
             sensor_range=6.,
             sensor_span=math.pi,
+            coef_inner_rew=0.,
+            dying_cost=-10,
             *args, **kwargs
     ):
+        Serializable.quick_init(self, locals())
         self.n_apples = n_apples
         self.n_bombs = n_bombs
         self.activity_range = activity_range
@@ -173,8 +176,11 @@ class GatherEnv(Env, Serializable):
         self.n_bins = n_bins
         self.sensor_range = sensor_range
         self.sensor_span = sensor_span
+        self.coef_inner_rew = coef_inner_rew
+        self.dying_cost = dying_cost
         self.objects = []
-        super(GatherEnv, self).__init__(*args, **kwargs)
+        self.viewer = None
+        # super(GatherEnv, self).__init__(*args, **kwargs)
         model_cls = self.__class__.MODEL_CLASS
         if model_cls is None:
             raise "MODEL_CLASS unspecified!"
@@ -214,11 +220,9 @@ class GatherEnv(Env, Serializable):
         # pylint: disable=not-callable
         inner_env = model_cls(*args, file_path=file_path, **kwargs)
         # pylint: enable=not-callable
-        self.inner_env = inner_env
-        Serializable.quick_init(self, locals())
+        ProxyEnv.__init__(self, inner_env)  # to access the inner env, do self.wrapped_env
 
-    def reset(self):
-        # super(GatherMDP, self).reset()
+    def reset(self, also_wrapped=True):
         self.objects = []
         existing = set()
         while len(self.objects) < self.n_apples:
@@ -248,16 +252,19 @@ class GatherEnv(Env, Serializable):
             self.objects.append((x, y, typ))
             existing.add((x, y))
 
-        self.inner_env.reset()
+        if also_wrapped:
+            self.wrapped_env.reset()
         return self.get_current_obs()
 
     def step(self, action):
-        _, _, done, info = self.inner_env.step(action)
+        _, inner_rew, done, info = self.wrapped_env.step(action)
+        info['inner_rew'] = inner_rew
+        info['outer_rew'] = 0
         if done:
-            return Step(self.get_current_obs(), -10, done, **info)
-        com = self.inner_env.get_body_com("torso")
+            return Step(self.get_current_obs(), self.dying_cost, done, **info)  # give a -10 rew if the robot dies
+        com = self.wrapped_env.get_body_com("torso")
         x, y = com[:2]
-        reward = 0
+        reward = self.coef_inner_rew * inner_rew
         new_objs = []
         for obj in self.objects:
             ox, oy, typ = obj
@@ -265,20 +272,22 @@ class GatherEnv(Env, Serializable):
             if (ox - x) ** 2 + (oy - y) ** 2 < self.catch_range ** 2:
                 if typ == APPLE:
                     reward = reward + 1
+                    info['outer_rew'] = 1
                 else:
                     reward = reward - 1
+                    info['outer_rew'] = -1
             else:
                 new_objs.append(obj)
         self.objects = new_objs
         done = len(self.objects) == 0
         return Step(self.get_current_obs(), reward, done, **info)
 
-    def get_readings(self):
+    def get_readings(self):  # equivalent to get_current_maze_obs in maze_env.py
         # compute sensor readings
         # first, obtain current orientation
         apple_readings = np.zeros(self.n_bins)
         bomb_readings = np.zeros(self.n_bins)
-        robot_x, robot_y = self.inner_env.get_body_com("torso")[:2]
+        robot_x, robot_y = self.wrapped_env.get_body_com("torso")[:2]
         # sort objects by distance to the robot, so that farther objects'
         # signals will be occluded by the closer ones'
         sorted_objects = sorted(
@@ -286,8 +295,9 @@ class GatherEnv(Env, Serializable):
             (o[0] - robot_x) ** 2 + (o[1] - robot_y) ** 2)[::-1]
         # fill the readings
         bin_res = self.sensor_span / self.n_bins
-        ori = self.get_ori()
-        # print ori*180/math.pi
+
+        ori = self.get_ori()  # overwrite this for Ant!
+
         for ox, oy, typ in sorted_objects:
             # compute distance between object and robot
             dist = ((oy - robot_y) ** 2 + (ox - robot_x) ** 2) ** 0.5
@@ -296,8 +306,7 @@ class GatherEnv(Env, Serializable):
                 continue
             angle = math.atan2(oy - robot_y, ox - robot_x) - ori
             if math.isnan(angle):
-                import ipdb
-                ipdb.set_trace()
+                import ipdb; ipdb.set_trace()
             angle = angle % (2 * math.pi)
             if angle > math.pi:
                 angle = angle - 2 * math.pi
@@ -308,8 +317,6 @@ class GatherEnv(Env, Serializable):
             if abs(angle) > half_span:
                 continue
             bin_number = int((angle + half_span) / bin_res)
-            #    ((angle + half_span) +
-            #     ori) % (2 * math.pi) / bin_res)
             intensity = 1.0 - dist / self.sensor_range
             if typ == APPLE:
                 apple_readings[bin_number] = intensity
@@ -317,46 +324,108 @@ class GatherEnv(Env, Serializable):
                 bomb_readings[bin_number] = intensity
         return apple_readings, bomb_readings
 
+    def get_current_robot_obs(self):
+        return self.wrapped_env.get_current_obs()
+
     def get_current_obs(self):
         # return sensor data along with data about itself
-        self_obs = self.inner_env.get_current_obs()
+        self_obs = self.wrapped_env.get_current_obs()
         apple_readings, bomb_readings = self.get_readings()
         return np.concatenate([self_obs, apple_readings, bomb_readings])
-
-    def get_viewer(self):
-        if self.inner_env.viewer is None:
-            self.inner_env.viewer = GatherViewer(self)
-            self.inner_env.viewer.start()
-            self.inner_env.viewer.set_model(self.inner_env.model)
-        return self.inner_env.viewer
-
-    @property
-    @overrides
-    def action_space(self):
-        return self.inner_env.action_space
-
-    @property
-    def action_bounds(self):
-        return self.inner_env.action_bounds
-
-    @property
-    def viewer(self):
-        return self.inner_env.viewer
 
     @property
     @overrides
     def observation_space(self):
-        dim = self.inner_env.observation_space.flat_dim
-        newdim = dim + self.n_bins * 2
-        ub = BIG * np.ones(newdim)
+        shp = self.get_current_obs().shape
+        ub = BIG * np.ones(shp)
         return spaces.Box(ub * -1, ub)
 
+    # space of only the robot observations (they go first in the get current obs)
+    @property
+    def robot_observation_space(self):
+        shp = self.get_current_robot_obs().shape
+        ub = BIG * np.ones(shp)
+        return spaces.Box(ub * -1, ub)
+
+    @property
+    def maze_observation_space(self):
+        shp = np.concatenate(self.get_readings()).shape
+        ub = BIG * np.ones(shp)
+        return spaces.Box(ub * -1, ub)
+
+    @property
+    @overrides
+    def action_space(self):
+        return self.wrapped_env.action_space
+
+    @property
+    def action_bounds(self):
+        return self.wrapped_env.action_bounds
+
+    # @property
+    # def viewer(self):
+    #     return self.wrapped_env.viewer
+
     def action_from_key(self, key):
-        return self.inner_env.action_from_key(key)
+        return self.wrapped_env.action_from_key(key)
 
-    def render(self):
-        self.get_viewer()
-        self.inner_env.render()
+    def get_viewer(self):
+        if self.wrapped_env.viewer is None:
+            self.wrapped_env.viewer = GatherViewer(self)
+            self.wrapped_env.viewer.start()
+            self.wrapped_env.viewer.set_model(self.wrapped_env.model)
+        return self.wrapped_env.viewer
 
-    def get_ori(self): # get orientation
-        return self.inner_env.model.data.qpos[self.__class__.ORI_IND]
+    def stop_viewer(self):
+        if self.wrapped_env.viewer:
+            self.wrapped_env.viewer.finish()
+
+    def render(self, mode='human', close=False):
+        if mode == 'rgb_array':
+            self.get_viewer().render()
+            data, width, height = self.get_viewer().get_image()
+            return np.fromstring(data, dtype='uint8').reshape(height, width, 3)[::-1,:,:]
+        elif mode == 'human':
+            self.get_viewer()
+            self.wrapped_env.render()
+        if close:
+            self.stop_viewer()
+
+    def get_ori(self):
+        """
+        First it tries to use a get_ori from the wrapped env. If not successfull, falls
+        back to the default based on the ORI_IND specified in Maze (not accurate for quaternions)
+        """
+        obj = self.wrapped_env
+        while not hasattr(obj, 'get_ori') and hasattr(obj, 'wrapped_env'):
+            obj = obj.wrapped_env
+        try:
+            return obj.get_ori()
+        except (NotImplementedError, AttributeError) as e:
+            pass
+        return self.wrapped_env.model.data.qpos[self.__class__.ORI_IND]
+
+    @overrides
+    def log_diagnostics(self, paths, log_prefix='Gather', *args, **kwargs):
+        # we call here any logging related to the gather, strip the maze obs and call log_diag with the stripped paths
+        # we need to log the purely gather reward!!
+        with logger.tabular_prefix(log_prefix + '_'):
+            gather_undiscounted_returns = [sum(path['env_infos']['outer_rew']) for path in paths]
+            logger.record_tabular_misc_stat('Return', gather_undiscounted_returns, placement='front')
+        stripped_paths = []
+        for path in paths:
+            stripped_path = {}
+            for k, v in path.items():
+                stripped_path[k] = v
+            stripped_path['observations'] = \
+                stripped_path['observations'][:, :self.wrapped_env.observation_space.flat_dim]
+            #  this breaks if the obs of the robot are d>1 dimensional (not a vector)
+            stripped_paths.append(stripped_path)
+        with logger.tabular_prefix('wrapped_'):
+            if 'env_infos' in paths[0].keys() and 'inner_rew' in paths[0]['env_infos'].keys():
+                wrapped_undiscounted_return = np.mean([np.sum(path['env_infos']['inner_rew']) for path in paths])
+                logger.record_tabular('AverageReturn', wrapped_undiscounted_return)
+            self.wrapped_env.log_diagnostics(stripped_paths)  # see swimmer_env.py for a scketch of the maze plotting!
+
+
+

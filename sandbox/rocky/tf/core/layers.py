@@ -166,11 +166,11 @@ class Layer(object):
             # Hacky: check if the parameter is a weight matrix. If so, apply weight normalization
             if len(param.get_shape()) == 2:
                 v = param
-                g = self.add_param_plain(tf.ones_initializer, (shape[1],), name=name + "_wn/g")
+                g = self.add_param_plain(tf.ones_initializer(), (shape[1],), name=name + "_wn/g")
                 param = v * (tf.reshape(g, (1, -1)) / tf.sqrt(tf.reduce_sum(tf.square(v), 0, keep_dims=True)))
             elif len(param.get_shape()) == 4:
                 v = param
-                g = self.add_param_plain(tf.ones_initializer, (shape[3],), name=name + "_wn/g")
+                g = self.add_param_plain(tf.ones_initializer(), (shape[3],), name=name + "_wn/g")
                 param = v * (tf.reshape(g, (1, 1, 1, -1)) / tf.sqrt(tf.reduce_sum(tf.square(v), [0, 1, 2],
                                                                                   keep_dims=True)))
             else:
@@ -286,7 +286,7 @@ class ConcatLayer(MergeLayer):
             # need to convert to common data type
             common_dtype = np.core.numerictypes.find_common_type([], dtypes)
             inputs = [tf.cast(x, common_dtype) for x in inputs]
-        return tf.concat(concat_dim=self.axis, values=inputs)
+        return tf.concat(axis=self.axis, values=inputs)
 
 
 concat = ConcatLayer  # shortcut
@@ -334,7 +334,7 @@ class OrthogonalInitializer(object):
 
 
 class ParamLayer(Layer):
-    def __init__(self, incoming, num_units, param=tf.zeros_initializer,
+    def __init__(self, incoming, num_units, param=tf.zeros_initializer(),
                  trainable=True, **kwargs):
         super(ParamLayer, self).__init__(incoming, **kwargs)
         self.num_units = num_units
@@ -351,7 +351,7 @@ class ParamLayer(Layer):
     def get_output_for(self, input, **kwargs):
         ndim = input.get_shape().ndims
         reshaped_param = tf.reshape(self.param, (1,) * (ndim - 1) + (self.num_units,))
-        tile_arg = tf.concat(0, [tf.shape(input)[:ndim - 1], [1]])
+        tile_arg = tf.concat(axis=0, values=[tf.shape(input)[:ndim - 1], [1]])
         tiled = tf.tile(reshaped_param, tile_arg)
         return tiled
 
@@ -375,7 +375,7 @@ class OpLayer(MergeLayer):
 
 
 class DenseLayer(Layer):
-    def __init__(self, incoming, num_units, nonlinearity=None, W=XavierUniformInitializer(), b=tf.zeros_initializer,
+    def __init__(self, incoming, num_units, nonlinearity=None, W=XavierUniformInitializer(), b=tf.zeros_initializer(),
                  **kwargs):
         super(DenseLayer, self).__init__(incoming, **kwargs)
         self.nonlinearity = tf.identity if nonlinearity is None else nonlinearity
@@ -397,7 +397,7 @@ class DenseLayer(Layer):
         if input.get_shape().ndims > 2:
             # if the input has more than two dimensions, flatten it into a
             # batch of feature vectors.
-            input = tf.reshape(input, tf.pack([tf.shape(input)[0], -1]))
+            input = tf.reshape(input, tf.stack([tf.shape(input)[0], -1]))
         activation = tf.matmul(input, self.W)
         if self.b is not None:
             activation = activation + tf.expand_dims(self.b, 0)
@@ -407,7 +407,7 @@ class DenseLayer(Layer):
 class BaseConvLayer(Layer):
     def __init__(self, incoming, num_filters, filter_size, stride=1, pad="VALID",
                  untie_biases=False,
-                 W=XavierUniformInitializer(), b=tf.zeros_initializer,
+                 W=XavierUniformInitializer(), b=tf.zeros_initializer(),
                  nonlinearity=tf.nn.relu, n=None, **kwargs):
         """
         Input is assumed to be of shape batch*height*width*channels
@@ -514,7 +514,7 @@ class BaseConvLayer(Layer):
 class Conv2DLayer(BaseConvLayer):
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
                  pad="VALID", untie_biases=False,
-                 W=XavierUniformInitializer(), b=tf.zeros_initializer,
+                 W=XavierUniformInitializer(), b=tf.zeros_initializer(),
                  nonlinearity=tf.nn.relu,
                  convolution=tf.nn.conv2d, **kwargs):
         super(Conv2DLayer, self).__init__(incoming=incoming, num_filters=num_filters, filter_size=filter_size,
@@ -600,7 +600,7 @@ def spatial_expected_softmax(x, temp=1):
         val = tf.reduce_sum(e * lin, [1, 2]) / (tf.reduce_sum(e, [1, 2]))
         vals.append(tf.expand_dims(val, 2))
 
-    return tf.reshape(tf.concat(2, vals), [-1, x.get_shape()[-1].value * 2])
+    return tf.reshape(tf.concat(axis=2, values=vals), [-1, x.get_shape()[-1].value * 2])
 
 
 class SpatialExpectedSoftmaxLayer(Layer):
@@ -725,7 +725,7 @@ class FlattenLayer(Layer):
         # total_entries = tf.reduce_prod(tf.shape(input))
         pre_shape = tf.shape(input)[:self.outdim - 1]
         to_flatten = tf.reduce_prod(tf.shape(input)[self.outdim - 1:])
-        return tf.reshape(input, tf.concat(0, [pre_shape, tf.pack([to_flatten])]))
+        return tf.reshape(input, tf.concat(axis=0, values=[pre_shape, tf.stack([to_flatten])]))
 
 
 flatten = FlattenLayer  # shortcut
@@ -818,7 +818,7 @@ class ReshapeLayer(Layer):
             if isinstance(o, list):
                 output_shape[dim] = tf.shape(input)[o[0]]
         # Everything else is handled by Theano
-        return tf.reshape(input, tf.pack(output_shape))
+        return tf.reshape(input, tf.stack(output_shape))
 
 
 reshape = ReshapeLayer  # shortcut
@@ -847,7 +847,7 @@ class SliceLayer(Layer):
         if axis < 0:
             axis += ndims
         if isinstance(self.slice, int) and self.slice < 0:
-            return tf.reverse(input, [False] * self.axis + [True] + [False] * (ndims - axis - 1))[
+            return tf.reverse(input, [self.axis + 1])[
                 (slice(None),) * axis + (-1 - self.slice,) + (slice(None),) * (ndims - axis - 1)
                 ]
         # import ipdb; ipdb.set_trace()
@@ -925,10 +925,10 @@ def apply_ln(layer):
 
         if bias_name not in layer.norm_params:
             layer.norm_params[bias_name] = layer.add_param(
-                tf.zeros_initializer, (dim,), name=bias_name, regularizable=False)
+                tf.zeros_initializer(), (dim,), name=bias_name, regularizable=False)
         if scale_name not in layer.norm_params:
             layer.norm_params[scale_name] = layer.add_param(
-                tf.ones_initializer, (dim,), name=scale_name)
+                tf.ones_initializer(), (dim,), name=scale_name)
 
         bias = layer.norm_params[bias_name]
         scale = layer.norm_params[scale_name]
@@ -951,7 +951,7 @@ class GRULayer(Layer):
 
     def __init__(self, incoming, num_units, hidden_nonlinearity,
                  gate_nonlinearity=tf.nn.sigmoid, W_x_init=XavierUniformInitializer(), W_h_init=OrthogonalInitializer(),
-                 b_init=tf.zeros_initializer, hidden_init=tf.zeros_initializer, hidden_init_trainable=False,
+                 b_init=tf.zeros_initializer(), hidden_init=tf.zeros_initializer(), hidden_init_trainable=False,
                  layer_normalization=False, **kwargs):
 
         if hidden_nonlinearity is None:
@@ -984,11 +984,11 @@ class GRULayer(Layer):
         self.W_hc = self.add_param(W_h_init, (num_units, num_units), name="W_hc")
         self.b_c = self.add_param(b_init, (num_units,), name="b_c", regularizable=False)
 
-        self.W_x_ruc = tf.concat(1, [self.W_xr, self.W_xu, self.W_xc])
-        self.W_h_ruc = tf.concat(1, [self.W_hr, self.W_hu, self.W_hc])
-        self.W_x_ru = tf.concat(1, [self.W_xr, self.W_xu])
-        self.W_h_ru = tf.concat(1, [self.W_hr, self.W_hu])
-        self.b_ruc = tf.concat(0, [self.b_r, self.b_u, self.b_c])
+        self.W_x_ruc = tf.concat(axis=1, values=[self.W_xr, self.W_xu, self.W_xc])
+        self.W_h_ruc = tf.concat(axis=1, values=[self.W_hr, self.W_hu, self.W_hc])
+        self.W_x_ru = tf.concat(axis=1, values=[self.W_xr, self.W_xu])
+        self.W_h_ru = tf.concat(axis=1, values=[self.W_hr, self.W_hu])
+        self.b_ruc = tf.concat(axis=0, values=[self.b_r, self.b_u, self.b_c])
 
         self.gate_nonlinearity = gate_nonlinearity
         self.num_units = num_units
@@ -1005,8 +1005,8 @@ class GRULayer(Layer):
             ln = apply_ln(self)
             x_ru = ln(tf.matmul(x, self.W_x_ru), "x_ru")
             h_ru = ln(tf.matmul(hprev, self.W_h_ru), "h_ru")
-            x_r, x_u = tf.split(split_dim=1, num_split=2, value=x_ru)
-            h_r, h_u = tf.split(split_dim=1, num_split=2, value=h_ru)
+            x_r, x_u = tf.split(axis=1, num_or_size_splits=2, value=x_ru)
+            h_r, h_u = tf.split(axis=1, num_or_size_splits=2, value=h_ru)
             x_c = ln(tf.matmul(x, self.W_xc), "x_c")
             h_c = ln(tf.matmul(hprev, self.W_hc), "h_c")
             r = self.gate_nonlinearity(x_r + h_r)
@@ -1017,8 +1017,8 @@ class GRULayer(Layer):
         else:
             xb_ruc = tf.matmul(x, self.W_x_ruc) + tf.reshape(self.b_ruc, (1, -1))
             h_ruc = tf.matmul(hprev, self.W_h_ruc)
-            xb_r, xb_u, xb_c = tf.split(split_dim=1, num_split=3, value=xb_ruc)
-            h_r, h_u, h_c = tf.split(split_dim=1, num_split=3, value=h_ruc)
+            xb_r, xb_u, xb_c = tf.split(axis=1, num_or_size_splits=3, value=xb_ruc)
+            h_r, h_u, h_c = tf.split(axis=1, num_or_size_splits=3, value=h_ruc)
             r = self.gate_nonlinearity(xb_r + h_r)
             u = self.gate_nonlinearity(xb_u + h_u)
             c = self.nonlinearity(xb_c + r * h_c)
@@ -1036,7 +1036,7 @@ class GRULayer(Layer):
         input_shape = tf.shape(input)
         n_batches = input_shape[0]
         n_steps = input_shape[1]
-        input = tf.reshape(input, tf.pack([n_batches, n_steps, -1]))
+        input = tf.reshape(input, tf.stack([n_batches, n_steps, -1]))
         if 'recurrent_state' in kwargs and self in kwargs['recurrent_state']:
             h0s = kwargs['recurrent_state'][self]
         else:
@@ -1072,7 +1072,7 @@ class GRUStepLayer(MergeLayer):
     def get_output_for(self, inputs, **kwargs):
         x, hprev = inputs
         n_batch = tf.shape(x)[0]
-        x = tf.reshape(x, tf.pack([n_batch, -1]))
+        x = tf.reshape(x, tf.stack([n_batch, -1]))
         x.set_shape((None, self.input_shapes[0][1]))
         return self._gru_layer.step(hprev, x)
 
@@ -1100,14 +1100,14 @@ class TfGRULayer(Layer):
             gru(input_dummy, hidden_dummy, scope=vs)
             vs.reuse_variables()
             self.scope = vs
-            all_vars = [v for v in tf.all_variables() if v.name.startswith(vs.name)]
+            all_vars = [v for v in tf.global_variables() if v.name.startswith(vs.name)]
             trainable_vars = [v for v in tf.trainable_variables() if v.name.startswith(vs.name)]
 
         for var in trainable_vars:
             self.add_param(spec=var, shape=None, name=None, trainable=True)
         for var in set(all_vars) - set(trainable_vars):
             self.add_param(spec=var, shape=None, name=None, trainable=False)
-        self.h0 = self.add_param(tf.zeros_initializer, (num_units,), name="h0", trainable=hidden_init_trainable,
+        self.h0 = self.add_param(tf.zeros_initializer(), (num_units,), name="h0", trainable=hidden_init_trainable,
                                  regularizable=False)
 
     def step(self, hprev, x):
@@ -1126,11 +1126,11 @@ class TfGRULayer(Layer):
             for idx in range(self.horizon):
                 output, state = self.gru(input[:, idx, :], state, scope=self.scope)  # self.name)
                 outputs.append(tf.expand_dims(output, 1))
-            outputs = tf.concat(1, outputs)
+            outputs = tf.concat(axis=1, values=outputs)
             return outputs
         else:
             n_steps = input_shape[1]
-            input = tf.reshape(input, tf.pack([n_batches, n_steps, -1]))
+            input = tf.reshape(input, tf.stack([n_batches, n_steps, -1]))
             # flatten extra dimensions
             shuffled_input = tf.transpose(input, (1, 0, 2))
             shuffled_input.set_shape((None, None, self.input_shape[-1]))
@@ -1182,8 +1182,8 @@ class PseudoLSTMLayer(Layer):
 
     def __init__(self, incoming, num_units, hidden_nonlinearity=tf.tanh,
                  gate_nonlinearity=tf.nn.sigmoid, W_x_init=XavierUniformInitializer(), W_h_init=OrthogonalInitializer(),
-                 forget_bias=1.0, b_init=tf.zeros_initializer, hidden_init=tf.zeros_initializer,
-                 hidden_init_trainable=False, cell_init=tf.zeros_initializer, cell_init_trainable=False,
+                 forget_bias=1.0, b_init=tf.zeros_initializer(), hidden_init=tf.zeros_initializer(),
+                 hidden_init_trainable=False, cell_init=tf.zeros_initializer(), cell_init_trainable=False,
                  gate_squash_inputs=False, layer_normalization=False, **kwargs):
 
         if hidden_nonlinearity is None:
@@ -1230,11 +1230,11 @@ class PseudoLSTMLayer(Layer):
         self.forget_bias = forget_bias
         self.gate_squash_inputs = gate_squash_inputs
 
-        self.W_x_ifo = tf.concat(1, [self.W_xi, self.W_xf, self.W_xo])
-        self.W_h_ifo = tf.concat(1, [self.W_hi, self.W_hf, self.W_ho])
+        self.W_x_ifo = tf.concat(axis=1, values=[self.W_xi, self.W_xf, self.W_xo])
+        self.W_h_ifo = tf.concat(axis=1, values=[self.W_hi, self.W_hf, self.W_ho])
 
-        self.W_x_if = tf.concat(1, [self.W_xi, self.W_xf])
-        self.W_h_if = tf.concat(1, [self.W_hi, self.W_hf])
+        self.W_x_if = tf.concat(axis=1, values=[self.W_xi, self.W_xf])
+        self.W_h_if = tf.concat(axis=1, values=[self.W_hi, self.W_hf])
 
         self.norm_params = dict()
 
@@ -1266,8 +1266,8 @@ class PseudoLSTMLayer(Layer):
             x_if = ln(tf.matmul(x, self.W_x_if), "x_if")
             h_if = ln(tf.matmul(o * hprev, self.W_h_if), "h_if")
 
-            x_i, x_f = tf.split(split_dim=1, num_split=2, value=x_if)
-            h_i, h_f = tf.split(split_dim=1, num_split=2, value=h_if)
+            x_i, x_f = tf.split(axis=1, num_or_size_splits=2, value=x_if)
+            h_i, h_f = tf.split(axis=1, num_or_size_splits=2, value=h_if)
 
             i = self.gate_nonlinearity(x_i + h_i + self.b_i)
             f = self.gate_nonlinearity(x_f + h_f + self.b_f + self.forget_bias)
@@ -1278,7 +1278,7 @@ class PseudoLSTMLayer(Layer):
             )
             c = f * cprev + i * c_new
             h = self.nonlinearity(ln(c, "c"))
-            return tf.concat(1, [h, c])
+            return tf.concat(axis=1, values=[h, c])
         else:
             """
                 Incoming gate:     i(t) = σ(W_hi @ h(t-1)) + W_xi @ x(t) + b_i)
@@ -1293,8 +1293,8 @@ class PseudoLSTMLayer(Layer):
             x_ifo = ln(tf.matmul(x, self.W_x_ifo), "x_ifo")
             h_ifo = ln(tf.matmul(hprev, self.W_h_ifo), "h_ifo")
 
-            x_i, x_f, x_o = tf.split(split_dim=1, num_split=3, value=x_ifo)
-            h_i, h_f, h_o = tf.split(split_dim=1, num_split=3, value=h_ifo)
+            x_i, x_f, x_o = tf.split(axis=1, num_or_size_splits=3, value=x_ifo)
+            h_i, h_f, h_o = tf.split(axis=1, num_or_size_splits=3, value=h_ifo)
 
             i = self.gate_nonlinearity(x_i + h_i + self.b_i)
             f = self.gate_nonlinearity(x_f + h_f + self.b_f + self.forget_bias)
@@ -1306,7 +1306,7 @@ class PseudoLSTMLayer(Layer):
             )
             c = f * cprev + i * c_new
             h = self.nonlinearity(ln(c, "c"))
-            return tf.concat(1, [h, c])
+            return tf.concat(axis=1, values=[h, c])
 
     def get_step_layer(self, l_in, l_prev_state, name=None):
         return LSTMStepLayer(incomings=[l_in, l_prev_state], recurrent_layer=self, name=name)
@@ -1319,7 +1319,7 @@ class PseudoLSTMLayer(Layer):
         input_shape = tf.shape(input)
         n_batches = input_shape[0]
         n_steps = input_shape[1]
-        input = tf.reshape(input, tf.pack([n_batches, n_steps, -1]))
+        input = tf.reshape(input, tf.stack([n_batches, n_steps, -1]))
         c0s = tf.tile(
             tf.reshape(self.c0, (1, self.num_units)),
             (n_batches, 1)
@@ -1330,7 +1330,7 @@ class PseudoLSTMLayer(Layer):
         hcs = tf.scan(
             self.step,
             elems=shuffled_input,
-            initializer=tf.concat(1, [h0s, c0s])
+            initializer=tf.concat(axis=1, values=[h0s, c0s])
         )
         shuffled_hcs = tf.transpose(hcs, (1, 0, 2))
         shuffled_hs = shuffled_hcs[:, :, :self.num_units]
@@ -1354,8 +1354,8 @@ class LSTMLayer(Layer):
     def __init__(self, incoming, num_units, hidden_nonlinearity=tf.tanh,
                  gate_nonlinearity=tf.nn.sigmoid, W_x_init=XavierUniformInitializer(), W_h_init=OrthogonalInitializer(),
                  forget_bias=1.0, use_peepholes=False, w_init=tf.random_normal_initializer(stddev=0.1),
-                 b_init=tf.zeros_initializer, hidden_init=tf.zeros_initializer, hidden_init_trainable=False,
-                 cell_init=tf.zeros_initializer, cell_init_trainable=False, layer_normalization=False,
+                 b_init=tf.zeros_initializer(), hidden_init=tf.zeros_initializer(), hidden_init_trainable=False,
+                 cell_init=tf.zeros_initializer(), cell_init_trainable=False, layer_normalization=False,
                  **kwargs):
 
         if hidden_nonlinearity is None:
@@ -1409,11 +1409,11 @@ class LSTMLayer(Layer):
         self.forget_bias = forget_bias
         self.use_peepholes = use_peepholes
 
-        self.W_x_ifco = tf.concat(1, [self.W_xi, self.W_xf, self.W_xc, self.W_xo])
-        self.W_h_ifco = tf.concat(1, [self.W_hi, self.W_hf, self.W_hc, self.W_ho])
+        self.W_x_ifco = tf.concat(axis=1, values=[self.W_xi, self.W_xf, self.W_xc, self.W_xo])
+        self.W_h_ifco = tf.concat(axis=1, values=[self.W_hi, self.W_hf, self.W_hc, self.W_ho])
 
         if use_peepholes:
-            self.w_c_ifo = tf.concat(0, [self.w_ci, self.w_cf, self.w_co])
+            self.w_c_ifo = tf.concat(axis=0, values=[self.w_ci, self.w_cf, self.w_co])
 
         self.norm_params = dict()
 
@@ -1436,8 +1436,8 @@ class LSTMLayer(Layer):
 
         x_ifco = ln(tf.matmul(x, self.W_x_ifco), "x_ifco")
         h_ifco = ln(tf.matmul(hprev, self.W_h_ifco), "h_ifco")
-        x_i, x_f, x_c, x_o = tf.split(split_dim=1, num_split=4, value=x_ifco)
-        h_i, h_f, h_c, h_o = tf.split(split_dim=1, num_split=4, value=h_ifco)
+        x_i, x_f, x_c, x_o = tf.split(axis=1, num_or_size_splits=4, value=x_ifco)
+        h_i, h_f, h_c, h_o = tf.split(axis=1, num_or_size_splits=4, value=h_ifco)
 
         if self.use_peepholes:
             i = self.gate_nonlinearity(x_i + h_i + self.w_ci * cprev + self.b_i)
@@ -1452,7 +1452,7 @@ class LSTMLayer(Layer):
 
         h = o * self.nonlinearity(ln(c, "c"))
 
-        return tf.concat(1, [h, c])
+        return tf.concat(axis=1, values=[h, c])
 
     def get_step_layer(self, l_in, l_prev_state, name=None):
         return LSTMStepLayer(incomings=[l_in, l_prev_state], recurrent_layer=self, name=name)
@@ -1465,7 +1465,7 @@ class LSTMLayer(Layer):
         input_shape = tf.shape(input)
         n_batches = input_shape[0]
         n_steps = input_shape[1]
-        input = tf.reshape(input, tf.pack([n_batches, n_steps, -1]))
+        input = tf.reshape(input, tf.stack([n_batches, n_steps, -1]))
         h0s = tf.tile(
             tf.reshape(self.h0, (1, self.num_units)),
             (n_batches, 1)
@@ -1479,7 +1479,7 @@ class LSTMLayer(Layer):
         hcs = tf.scan(
             self.step,
             elems=shuffled_input,
-            initializer=tf.concat(1, [h0s, c0s])
+            initializer=tf.concat(axis=1, values=[h0s, c0s])
         )
         shuffled_hcs = tf.transpose(hcs, (1, 0, 2))
         shuffled_hs = shuffled_hcs[:, :, :self.num_units]
@@ -1504,7 +1504,7 @@ class LSTMStepLayer(MergeLayer):
     def get_output_for(self, inputs, **kwargs):
         x, hcprev = inputs
         n_batch = tf.shape(x)[0]
-        x = tf.reshape(x, tf.pack([n_batch, -1]))
+        x = tf.reshape(x, tf.stack([n_batch, -1]))
         hc = self._recurrent_layer.step(hcprev, x)
         return hc
 
@@ -1519,7 +1519,7 @@ class TfBasicLSTMLayer(Layer):
         assert not use_peepholes, "Basic LSTM does not support peepholes!"
         assert len(incoming.output_shape) == 3
         input_dim = incoming.shape[2]
-        lstm = tf.nn.rnn_cell.BasicLSTMCell(
+        lstm = tf.contrib.rnn.BasicLSTMCell(
             num_units=num_units,
             activation=hidden_nonlinearity,
             state_is_tuple=True,
@@ -1539,7 +1539,7 @@ class TfBasicLSTMLayer(Layer):
             lstm(input_dummy, (cell_dummy, hidden_dummy), scope=vs)
             vs.reuse_variables()
             self.scope = vs
-            all_vars = [v for v in tf.all_variables() if v.name.startswith(vs.name)]
+            all_vars = [v for v in tf.global_variables() if v.name.startswith(vs.name)]
             trainable_vars = [v for v in tf.trainable_variables() if v.name.startswith(vs.name)]
 
         for var in trainable_vars:
@@ -1547,9 +1547,9 @@ class TfBasicLSTMLayer(Layer):
         for var in set(all_vars) - set(trainable_vars):
             self.add_param(spec=var, shape=None, name=None, trainable=False)
 
-        self.h0 = self.add_param(tf.zeros_initializer, (num_units,), name="h0", trainable=hidden_init_trainable,
+        self.h0 = self.add_param(tf.zeros_initializer(), (num_units,), name="h0", trainable=hidden_init_trainable,
                                  regularizable=False)
-        self.c0 = self.add_param(tf.zeros_initializer, (num_units,), name="c0", trainable=hidden_init_trainable,
+        self.c0 = self.add_param(tf.zeros_initializer(), (num_units,), name="c0", trainable=hidden_init_trainable,
                                  regularizable=False)
 
     def step(self, hcprev, x):
@@ -1557,7 +1557,7 @@ class TfBasicLSTMLayer(Layer):
         cprev = hcprev[:, self.num_units:]
         x.set_shape((None, self.input_shape[-1]))
         c, h = self.lstm(x, (cprev, hprev), scope=self.scope)[1]
-        return tf.concat(1, [h, c])
+        return tf.concat(axis=1, values=[h, c])
 
     def get_output_for(self, input, **kwargs):
         input_shape = tf.shape(input)
@@ -1578,18 +1578,18 @@ class TfBasicLSTMLayer(Layer):
             for idx in range(self.horizon):
                 output, state = self.lstm(input[:, idx, :], state, scope=self.scope)  # self.name)
                 outputs.append(tf.expand_dims(output, 1))
-            outputs = tf.concat(1, outputs)
+            outputs = tf.concat(axis=1, values=outputs)
             return outputs
         else:
             n_steps = input_shape[1]
-            input = tf.reshape(input, tf.pack([n_batches, n_steps, -1]))
+            input = tf.reshape(input, tf.stack([n_batches, n_steps, -1]))
             # flatten extra dimensions
             shuffled_input = tf.transpose(input, (1, 0, 2))
             shuffled_input.set_shape((None, None, self.input_shape[-1]))
             hcs = tf.scan(
                 self.step,
                 elems=shuffled_input,
-                initializer=tf.concat(1, [h0s, c0s]),
+                initializer=tf.concat(axis=1, values=[h0s, c0s]),
             )
             shuffled_hcs = tf.transpose(hcs, (1, 0, 2))
             shuffled_hs = shuffled_hcs[:, :, :self.num_units]
@@ -1667,8 +1667,8 @@ class NonlinearityLayer(Layer):
 
 class BatchNormLayer(Layer):
     def __init__(self, incoming, center=True, scale=False, epsilon=0.001, decay=0.9,
-                 beta=tf.zeros_initializer, gamma=tf.ones_initializer, moving_mean=tf.zeros_initializer,
-                 moving_variance=tf.ones_initializer, **kwargs):
+                 beta=tf.zeros_initializer(), gamma=tf.ones_initializer(), moving_mean=tf.zeros_initializer(),
+                 moving_variance=tf.ones_initializer(), **kwargs):
         super(BatchNormLayer, self).__init__(incoming, **kwargs)
 
         self.center = center

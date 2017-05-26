@@ -102,7 +102,7 @@ class BatchPolopt(RLAlgorithm):
 
     def train(self):
         with tf.Session() as sess:
-            sess.run(tf.initialize_all_variables())
+            sess.run(tf.global_variables_initializer())
             self.start_worker()
             start_time = time.time()
             for itr in range(self.start_itr, self.n_itr):
