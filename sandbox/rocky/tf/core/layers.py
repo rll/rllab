@@ -1447,9 +1447,9 @@ class LSTMLayer(Layer):
         else:
             i = self.gate_nonlinearity(x_i + h_i + self.b_i)
             f = self.gate_nonlinearity(x_f + h_f + self.b_f + self.forget_bias)
-            c = f * cprev + i * self.nonlinearity(x_c + h_c + self.b_c)
             o = self.gate_nonlinearity(x_o + h_o + self.b_o)
 
+        c = f * cprev + i * self.nonlinearity(x_c + h_c + self.b_c)
         h = o * self.nonlinearity(ln(c, "c"))
 
         return tf.concat(axis=1, values=[h, c])

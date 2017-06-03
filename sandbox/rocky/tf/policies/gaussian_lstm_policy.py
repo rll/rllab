@@ -24,6 +24,7 @@ class GaussianLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
             init_std=1.0,
             output_nonlinearity=None,
             lstm_layer_cls=L.LSTMLayer,
+            use_peepholes=False,
     ):
         """
         :param env_spec: A spec for the env.
@@ -74,7 +75,8 @@ class GaussianLSTMPolicy(StochasticPolicy, LayersPowered, Serializable):
                 hidden_nonlinearity=hidden_nonlinearity,
                 output_nonlinearity=output_nonlinearity,
                 lstm_layer_cls=lstm_layer_cls,
-                name="mean_network"
+                name="mean_network",
+                use_peepholes=use_peepholes,
             )
 
             l_log_std = L.ParamLayer(
