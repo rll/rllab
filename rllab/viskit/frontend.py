@@ -481,16 +481,17 @@ def plot_div():
     custom_filter = args.get("custom_filter", None)
     custom_series_splitter = args.get("custom_series_splitter", None)
     if custom_filter is not None and len(custom_filter.strip()) > 0:
-        custom_filter = eval(custom_filter)
+        custom_filter = safer_eval(custom_filter)
+
     else:
         custom_filter = None
     legend_post_processor = args.get("legend_post_processor", None)
     if legend_post_processor is not None and len(legend_post_processor.strip()) > 0:
-        legend_post_processor = eval(legend_post_processor)
+        legend_post_processor = safer_eval(legend_post_processor)
     else:
         legend_post_processor = None
     if custom_series_splitter is not None and len(custom_series_splitter.strip()) > 0:
-        custom_series_splitter = eval(custom_series_splitter)
+        custom_series_splitter = safer_eval(custom_series_splitter)
     else:
         custom_series_splitter = None
     plot_div = get_plot_instruction(plot_key=plot_key, split_key=split_key, filter_nan=filter_nan,
@@ -504,6 +505,15 @@ def plot_div():
     # print plot_div
     return plot_div
 
+def safer_eval(some_string):
+    """
+    Not full-proof, but taking advice from:
+
+    https://nedbatchelder.com/blog/201206/eval_really_is_dangerous.html
+    """
+    if "__" in some_string or "import" in some_string:
+        raise Exception("string to eval looks suspicious")
+    return eval(some_string, {'__builtins__': {}})
 
 @app.route("/")
 def index():
@@ -538,8 +548,9 @@ def reload_data():
     global plottable_keys
     global distinct_params
     exps_data = core.load_exps_data(args.data_paths,args.disable_variant)
-    plottable_keys = sorted(list(
-        set(flatten(list(exp.progress.keys()) for exp in exps_data))))
+    plottable_keys = list(
+        set(flatten(list(exp.progress.keys()) for exp in exps_data)))
+    plottable_keys = sorted([k for k in plottable_keys if k is not None])
     distinct_params = sorted(core.extract_distinct_params(exps_data))
 
 
