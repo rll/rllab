@@ -82,8 +82,5 @@ else:
     from .config_personal import *
     print("Personal config created, but you should probably edit it before further experiments " \
           "are run")
-    if 'CIRCLECI' not in os.environ:
-        print("Exiting.")
-        import sys; sys.exit(0)
 
 LABEL = ""
