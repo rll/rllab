@@ -8,11 +8,12 @@ Integrating with OpenAI Gym
 
 `OpenAI Gym <https://gym.openai.com/>`_ is a recently released reinforcement learning toolkit that contains a wide
 range of environments and an online scoreboard. rllab now provides a wrapper to run algorithms in rllab on environments
-from OpenAI Gym, as well as submitting the results to the scoreboard. The example script in :code:`examples/trpo_gym.py`
+from OpenAI Gym, as well as submitting the results to the scoreboard. The example script in :code:`examples/trpo_gym_pendulum.py`
 provides a simple example of training an agent on the :code:`Pendulum-v0` environment. The content of the file is as follows:
 
 
 .. code-block:: python
+
     from rllab.algos.trpo import TRPO
     from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
     from rllab.envs.gym_env import GymEnv
