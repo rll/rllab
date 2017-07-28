@@ -38,7 +38,6 @@ dependencies:
         - pyzmq
         - tqdm
         - msgpack-python
-        - mujoco_py
         - cached_property
         - line_profiler
         - cloudpickle
