@@ -14,7 +14,7 @@ class Agent:
             state_size=None, 
             number_of_actions=1,
             epsilon=0.1, 
-            mbsz=32, 
+            batch_size=32, 
             discount=0.9, 
             memory=50,
             save_name='basic', 
@@ -23,7 +23,7 @@ class Agent:
         self.state_size = state_size
         self.number_of_actions = number_of_actions
         self.epsilon = epsilon
-        self.mbsz = mbsz
+        self.batch_size = batch_size
         self.discount = discount
         self.memory = memory
         self.save_name = save_name
@@ -37,10 +37,8 @@ class Agent:
 
     def build_model(self):
         S = Input(shape=self.state_size)
-        h = Convolution2D(16, 8, 8, subsample=(4, 4),
-            border_mode='same', activation='relu')(S)
-        h = Convolution2D(32, 4, 4, subsample=(2, 2),
-            border_mode='same', activation='relu')(h)
+        h = Convolution2D(16, 8, 8, subsample=(4, 4), border_mode='same', activation='relu')(S)
+        h = Convolution2D(32, 4, 4, subsample=(2, 2), border_mode='same', activation='relu')(h)
         h = Flatten()(h)
         h = Dense(256, activation='relu')(h)
         V = Dense(self.number_of_actions)(h)
@@ -102,12 +100,12 @@ class Agent:
 
     def iterate(self):
         N = len(self.states)
-        S = numpy.zeros((self.mbsz,) + self.state_size)
-        NS = numpy.zeros((self.mbsz,) + self.state_size)
-        A = numpy.zeros((self.mbsz, 1), dtype=numpy.int32)
-        R = numpy.zeros((self.mbsz, 1), dtype=numpy.float32)
-        T = numpy.zeros((self.mbsz, 1), dtype=numpy.int32)
-        for i in xrange(self.mbsz):
+        S = numpy.zeros((self.batch_size,) + self.state_size)
+        NS = numpy.zeros((self.batch_size,) + self.state_size)
+        A = numpy.zeros((self.batch_size, 1), dtype=numpy.int32)
+        R = numpy.zeros((self.batch_size, 1), dtype=numpy.float32)
+        T = numpy.zeros((self.batch_size, 1), dtype=numpy.int32)
+        for i in xrange(self.batch_size):
             episode = random.randint(max(0, N-50), N-1)
             num_frames = len(self.states[episode])
             frame = random.randint(0, num_frames-1)
@@ -133,7 +131,7 @@ class DQN(RLAlgorithm):
             state_size=None, 
             number_of_actions=1,
             epsilon=0.1, 
-            mbsz=32, 
+            batch_size=32, 
             discount=0.9, 
             memory=50,
             save_name='basic', 
@@ -144,7 +142,7 @@ class DQN(RLAlgorithm):
         self.state_size = state_size
         self.number_of_actions = number_of_actions
         self.epsilon = epsilon
-        self.mbsz = mbsz
+        self.batch_size = batch_size
         self.discount = discount
         self.memory = memory
         self.save_name = save_name
@@ -153,9 +151,14 @@ class DQN(RLAlgorithm):
     # @overrides
     def train(self):
         agent = Agent(
-                state_size=env.observation_space.shape,
-                number_of_actions=env.action_space.n,
-                save_name=env) 
+                state_size=self.state_size,
+                number_of_actions=self.number_of_actions,
+                epsilon=self.epsilon,
+                batch_size=self.batch_size,
+                discount=self.discount,
+                memory=self.memory,
+                save_name=self.save_name
+                ) 
 
         for e in xrange(self.num_episodes):
             observation = self.env.reset()
