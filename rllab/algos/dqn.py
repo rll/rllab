@@ -105,7 +105,7 @@ class Agent:
         A = numpy.zeros((self.batch_size, 1), dtype=numpy.int32)
         R = numpy.zeros((self.batch_size, 1), dtype=numpy.float32)
         T = numpy.zeros((self.batch_size, 1), dtype=numpy.int32)
-        for i in xrange(self.batch_size):
+        for i in range(self.batch_size):
             episode = random.randint(max(0, N-50), N-1)
             num_frames = len(self.states[episode])
             frame = random.randint(0, num_frames-1)
@@ -151,8 +151,8 @@ class DQN(RLAlgorithm):
     # @overrides
     def train(self):
         agent = Agent(
-                state_size=self.state_size,
-                number_of_actions=self.number_of_actions,
+                state_size=self.env.observation_space.shape,
+                number_of_actions=self.env.action_space.n,
                 epsilon=self.epsilon,
                 batch_size=self.batch_size,
                 discount=self.discount,
@@ -160,7 +160,7 @@ class DQN(RLAlgorithm):
                 save_name=self.save_name
                 ) 
 
-        for e in xrange(self.num_episodes):
+        for e in range(self.num_episodes):
             observation = self.env.reset()
             done = False
             agent.new_episode()
@@ -172,7 +172,7 @@ class DQN(RLAlgorithm):
                 #env.render()
                 action, values = agent.act(observation)
                 #action = env.action_space.sample()
-                observation, reward, done, info = env.step(action)
+                observation, reward, done, info = self.env.step(action)
                 total_cost += agent.observe(reward)
                 total_reward += reward
             print("total reward", total_reward)
