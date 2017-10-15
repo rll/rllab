@@ -85,6 +85,7 @@ class DQN(RLAlgorithm):
                 agent.remember(state, action, reward, next_state, self.done)
                 state = next_state
                 if self.done:
+                    self.env.reset()
                     print("episode: {}/{}, score: {}, e: {:2}".format(e, self.episodes, time, agent.epsilon))
             if len(agent.memory) > self.batch_size:
                 agent.replay(self.batch_size)
