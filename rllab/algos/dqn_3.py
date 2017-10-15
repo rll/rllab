@@ -8,7 +8,15 @@ from keras.optimizers import Adam
 from rllab.algos.base import RLAlgorithm
 
 class DQNAgent:
-    def __init__(self, state_size, action_size):
+    def __init__(
+            self, 
+            state_size, 
+            action_size,
+            gamma,
+            epsilon,
+            epsilon_min,
+            epsilon_decay,
+            learning_rate):
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
@@ -62,16 +70,33 @@ class DQN(RLAlgorithm):
             self,
             env,
             batch_size,
-            episodes):
+            episodes,
+            gamma,
+            epsilon,
+            epsilon_min,
+            epsilon_decay,
+            learning_rate):
         self.env=env
         self.batch_size=batch_size
         self.episodes=episodes
         self.state_size=env.observation_space.shape[0]
         self.action_size=env.action_space.n
         self.done=False
+        self.gamma=gamma    # discount rate
+        self.epsilon=epsilon  # exploration rate
+        self.epsilon_min=epsilon_min
+        self.epsilon_decay=epsilon_decay
+        self.learning_rate=learning_rate
 
     def train(self):
-        agent = DQNAgent(self.state_size, self.action_size)
+        agent = DQNAgent(
+                self.state_size, 
+                self.action_size,
+                self.gamma,
+                self.epsilon,
+                self.epsilon_min,
+                self.epsilon_decay,
+                self.learning_rate)
 
         for e in range(self.episodes):
             state = self.env.reset()
