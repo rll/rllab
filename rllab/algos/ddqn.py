@@ -10,8 +10,8 @@ from rllab.algos.base import RLAlgorithm
 
 class DQNAgent:
     def __init__(
-            self, 
-            state_size, 
+            self,
+            state_size,
             action_size,
             gamma,
             epsilon,
@@ -103,7 +103,7 @@ class DDQN(RLAlgorithm):
 
     def train(self):
         agent = DQNAgent(
-                self.state_size, 
+                self.state_size,
                 self.action_size,
                 self.gamma,
                 self.epsilon,
@@ -115,7 +115,7 @@ class DDQN(RLAlgorithm):
             state = self.env.reset()
             state = np.reshape(state, [1, self.state_size])
             for time in range(500):
-                # env.render()
+                self.env.render()
                 action = agent.act(state)
                 next_state, reward, self.done, _ = self.env.step(action)
                 reward = reward if not self.done else -10
@@ -131,5 +131,3 @@ class DDQN(RLAlgorithm):
                 agent.replay(self.batch_size)
             # if e % 10 == 0:
             #     agent.save("./save/cartpole-ddqn.h5")
-
-
