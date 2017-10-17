@@ -3,9 +3,9 @@ from rllab.envs.box2d.cartpole_env import CartpoleEnv
 from rllab.envs.normalized_env import normalize
 import gym
 
-env_name = 'Pendulum-v0'
+env_name = 'MountainCar-v0'
 env = gym.make(env_name)
-
+env = env.unwrapped
 algo = PrioritizedReplayDQN(
     env=env,
     memory_size=10000,
