@@ -1,10 +1,10 @@
-from rllab.algos.dueling_dqn import DuelingDQN
+from rllab.algos.dqn import DQN
 import gym
 
 env_name = 'Pendulum-v0'
 env = gym.make(env_name)
 
-algo = DuelingDQN(
+algo = DQN(
     env=env,
     memory_size=3000,
     action_space=25,
