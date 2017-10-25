@@ -3,11 +3,12 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from rllab.algos.base import RLAlgorithm
+from rllab.algos.agent import Agent
 
 np.random.seed(1)
 tf.set_random_seed(1)
 
-class Agent:
+class DQNAgent(Agent):
     def __init__(
             self,
             n_actions,
@@ -67,26 +68,27 @@ class Agent:
         # ------------------ build evaluate_net ------------------
         self.s = tf.placeholder(tf.float32, [None, self.n_features], name='s')  # input
         self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Q_target')  # for calculating loss
+
         with tf.variable_scope('eval_net'):
-            c_names, n_l1, w_initializer, b_initializer = \
-                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 20, \
-                tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  # config of layers
+            c_names, n_l1, w_initializer, b_initializer = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 20, tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  # config of layers
 
             self.q_eval = build_layers(self.s, c_names, n_l1, w_initializer, b_initializer)
 
         with tf.variable_scope('loss'):
             self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
+
         with tf.variable_scope('train'):
             self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
         # ------------------ build target_net ------------------
         self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
+
         with tf.variable_scope('target_net'):
             c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
 
             self.q_next = build_layers(self.s_, c_names, n_l1, w_initializer, b_initializer)
 
-    def store_transition(self, s, a, r, s_):
+    def observe(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):
             self.memory_counter = 0
         transition = np.hstack((s, [a, r], s_))
@@ -94,7 +96,7 @@ class Agent:
         self.memory[index, :] = transition
         self.memory_counter += 1
 
-    def choose_action(self, observation):
+    def trainPolicy(self, observation):
         observation = observation[np.newaxis, :]
         if np.random.uniform() < self.epsilon:  # choosing action
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
@@ -102,6 +104,9 @@ class Agent:
         else:
             action = np.random.randint(0, self.n_actions)
         return action
+
+    def runPolicy(self, state):
+        pass
 
     def learn(self):
         if self.learn_step_counter % self.replace_target_iter == 0:
@@ -160,7 +165,7 @@ class DQN(RLAlgorithm):
         sess = tf.Session()
 
         with tf.variable_scope('natural'):
-            natural_DQN = Agent(
+            natural_DQN = DQNAgent(
                 n_actions=self.action_space,
                 n_features=3,
                 e_greedy_increment=0.001,
@@ -178,19 +183,19 @@ class DQN(RLAlgorithm):
         def run(Agent):
             acc_r = [0]
             total_steps = 0
-            observation = self.env.reset()
+            state = self.env.reset()
             while True:
                 # if total_steps-MEMORY_SIZE > 9000: env.render()
-                action = Agent.choose_action(observation)
+                action = Agent.trainPolicy(state)
 
                 f_action = (action-(self.action_space-1)/2)/((self.action_space-1)/4)
                    # [-2 ~ 2] float actions
-                observation_, reward, done, info = self.env.step(np.array([f_action]))
+                newState, reward, terminated, info = self.env.step(np.array([f_action]))
 
                 reward /= 10      # normalize to a range of (-1, 0)
                 acc_r.append(reward + acc_r[-1])  # accumulated reward
 
-                Agent.store_transition(observation, action, reward, observation_)
+                Agent.observe(state, action, reward, newState)
 
                 if total_steps > self.memory_size:
                     Agent.learn()
@@ -198,9 +203,11 @@ class DQN(RLAlgorithm):
                 if total_steps-self.memory_size > 15000:
                     break
 
-                observation = observation_
+                state = newState
                 total_steps += 1
-                print("total steps:", total_steps, ", accuracy:", reward+acc_r[-1])
+
+                if total_steps % 1000 == 0:
+                    print("total steps:", total_steps, ", accuracy:")
 
 
             return Agent.cost_his, acc_r
