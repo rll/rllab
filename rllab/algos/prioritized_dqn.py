@@ -294,25 +294,10 @@ class PrioritizedReplayDQN(RLAlgorithm):
         self.batch_size=batch_size
 
     def train(self):
-        
+
         self.env.seed(21)
         sess = tf.Session()
-        '''
-        with tf.variable_scope('natural_DQN'):
-            RL_natural = PrioritizedReplayDQNAgent(
-                n_actions=3,
-                n_features=2,
-                learning_rate=self.learning_rate,
-                reward_decay=self.reward_decay,
-                e_greedy=self.e_greedy,
-                replace_target_iter=self.replace_target_iter,
-                memory_size=self.memory_size_agent,
-                batch_size=self.batch_size,
-                e_greedy_increment=0.00005,
-                sess=sess,
-                prioritized=False,
-            )
-        '''
+        
         with tf.variable_scope('DQN_with_prioritized_replay'):
             RL_prio = PrioritizedReplayDQNAgent(
                 n_actions=3,

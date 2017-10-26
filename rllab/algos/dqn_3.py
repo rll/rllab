@@ -45,6 +45,9 @@ class DQNAgent:
                       optimizer=Adam(lr=self.learning_rate))
         return model
 
+    def _build_net(self):
+        pass
+    
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
 

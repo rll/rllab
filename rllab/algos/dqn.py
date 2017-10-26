@@ -1,9 +1,9 @@
 import gym
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from rllab.algos.base import RLAlgorithm
 from rllab.algos.agent import Agent
+from rllab.algos.train_agent import trainAgent
 
 np.random.seed(1)
 tf.set_random_seed(1)
@@ -88,18 +88,18 @@ class DQNAgent(Agent):
 
             self.q_next = build_layers(self.s_, c_names, n_l1, w_initializer, b_initializer)
 
-    def observe(self, s, a, r, s_):
+    def observe(self, state, action, reward, newState, terminated):
         if not hasattr(self, 'memory_counter'):
             self.memory_counter = 0
-        transition = np.hstack((s, [a, r], s_))
+        transition = np.hstack((state, [action, reward], newState))
         index = self.memory_counter % self.memory_size
         self.memory[index, :] = transition
         self.memory_counter += 1
 
-    def trainPolicy(self, observation):
-        observation = observation[np.newaxis, :]
+    def trainPolicy(self, state):
+        state = state[np.newaxis, :]
         if np.random.uniform() < self.epsilon:  # choosing action
-            actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
+            actions_value = self.sess.run(self.q_eval, feed_dict={self.s: state})
             action = np.argmax(actions_value)
         else:
             action = np.random.randint(0, self.n_actions)
@@ -165,9 +165,9 @@ class DQN(RLAlgorithm):
         sess = tf.Session()
 
         with tf.variable_scope('natural'):
-            natural_DQN = DQNAgent(
+            DQN = DQNAgent(
                 n_actions=self.action_space,
-                n_features=3,
+                n_features=2,
                 e_greedy_increment=0.001,
                 sess=sess,
                 output_graph=True,
@@ -180,52 +180,4 @@ class DQN(RLAlgorithm):
 
         sess.run(tf.global_variables_initializer())
 
-        def run(Agent):
-            acc_r = [0]
-            total_steps = 0
-            state = self.env.reset()
-            while True:
-                # if total_steps-MEMORY_SIZE > 9000: env.render()
-                action = Agent.trainPolicy(state)
-
-                f_action = (action-(self.action_space-1)/2)/((self.action_space-1)/4)
-                   # [-2 ~ 2] float actions
-                newState, reward, terminated, info = self.env.step(np.array([f_action]))
-
-                reward /= 10      # normalize to a range of (-1, 0)
-                acc_r.append(reward + acc_r[-1])  # accumulated reward
-
-                Agent.observe(state, action, reward, newState)
-
-                if total_steps > self.memory_size:
-                    Agent.learn()
-
-                if total_steps-self.memory_size > 15000:
-                    break
-
-                state = newState
-                total_steps += 1
-
-                if total_steps % 1000 == 0:
-                    print("total steps:", total_steps, ", accuracy:")
-
-
-            return Agent.cost_his, acc_r
-
-        c_natural, r_natural = run(natural_DQN)
-
-        plt.figure(1)
-        plt.plot(np.array(c_natural), c='r', label='natural')
-        plt.legend(loc='best')
-        plt.ylabel('cost')
-        plt.xlabel('training steps')
-        plt.grid()
-
-        plt.figure(2)
-        plt.plot(np.array(r_natural), c='r', label='natural')
-        plt.legend(loc='best')
-        plt.ylabel('accumulated reward')
-        plt.xlabel('training steps')
-        plt.grid()
-
-        plt.show()
+        dqn = trainAgent(self, DQN)
