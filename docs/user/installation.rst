@@ -83,7 +83,7 @@ This step is only needed under Linux:
 
 .. code-block:: bash
 
-  sudo apt-get build-dep python-scipy
+  sudo apt-get install build-dep python-scipy
 
 Install Python modules
 ----------------------
