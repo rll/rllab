@@ -49,7 +49,7 @@ class MountainCarEnv(Box2DEnv, Serializable):
         ])
         low, high = bounds
         xvel = np.random.uniform(low, high)
-        self.cart.linearVelocity = (xvel, self.cart.linearVelocity[1])
+        self.cart.linearVelocity = (float(xvel), self.cart.linearVelocity[1])
         return self.get_current_obs()
 
     @overrides
