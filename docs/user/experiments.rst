@@ -154,7 +154,7 @@ Note that the execution of the experiment (including the construction of relevan
 
 The benefit for launching experiment this way is that we separate the configuration of experiment parameters and the actual execution of the experiment. `run_experiment_lite` supports multiple ways of running the experiment, either locally, locally in a docker container, or remotely on ec2 (see the section on :ref:`cluster`). Multiple experiments with different hyper-parameter settings can be quickly constructed and launched simultaneously on multiple ec2 machines using this abstraction.
 
-Another subtle point is that we use Theano for our algorithm implementations, which has rather poor support for mixed GPU and CPU usage. This might be handy when the main process wants to use GPU for the batch optimization phase, while multiple worker processes want to use the GPU for generating trajectory rollouts. Launching the experiment separately allows the worker processes to be properly initialized with Theano configured to use CPU.
+Another subtle point is that we use Theano for our algorithm implementations, which has rather poor support for mixed GPU and CPU usage. This might be handy when the main process wants to use GPU for the batch optimization phase, while multiple worker processes want to use the CPU for generating trajectory rollouts. Launching the experiment separately allows the worker processes to be properly initialized with Theano configured to use CPU.
 
 Additional arguments for `run_experiment_lite` (experimental):
 
