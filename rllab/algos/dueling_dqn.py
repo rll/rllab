@@ -3,6 +3,7 @@ import tensorflow as tf
 import gym
 import matplotlib.pyplot as plt
 from rllab.algos.base import RLAlgorithm
+from rllab.algos.train_agent import trainAgent
 
 np.random.seed(1)
 tf.set_random_seed(1)
@@ -103,22 +104,25 @@ class DuelingDQNAgent:
 
             self.q_next = build_layers(self.s_, c_names, n_l1, w_initializer, b_initializer)
 
-    def store_transition(self, s, a, r, s_):
+    def observe(self, state, action, reward, newState, terminated):
         if not hasattr(self, 'memory_counter'):
             self.memory_counter = 0
-        transition = np.hstack((s, [a, r], s_))
+        transition = np.hstack((state, [action, reward], newState))
         index = self.memory_counter % self.memory_size
         self.memory[index, :] = transition
         self.memory_counter += 1
 
-    def choose_action(self, observation):
-        observation = observation[np.newaxis, :]
+    def trainPolicy(self, state):
+        state = state[np.newaxis, :]
         if np.random.uniform() < self.epsilon:  # choosing action
-            actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
+            actions_value = self.sess.run(self.q_eval, feed_dict={self.s: state})
             action = np.argmax(actions_value)
         else:
             action = np.random.randint(0, self.n_actions)
         return action
+
+    def runPolicy(self, state):
+        pass
 
     def learn(self):
         if self.learn_step_counter % self.replace_target_iter == 0:
@@ -176,17 +180,11 @@ class DuelingDQN(RLAlgorithm):
         self.env = self.env.unwrapped
         self.env.seed(1)
         sess = tf.Session()
-        '''
-        with tf.variable_scope('natural'):
-            natural_DQN = DuelingDQN(
-                n_actions=self.action_space, n_features=3, memory_size=self.memory_size,
-                e_greedy_increment=0.001, sess=sess, dueling=False)
-        '''
 
         with tf.variable_scope('dueling'):
             dueling_DQN = DuelingDQNAgent(
                 n_actions=self.action_space,
-                n_features=3,
+                n_features=2,
                 e_greedy_increment=0.001,
                 sess=sess,
                 dueling=True,
@@ -200,6 +198,9 @@ class DuelingDQN(RLAlgorithm):
 
         sess.run(tf.global_variables_initializer())
 
+        dueling_dqn = trainAgent(self, dueling_DQN)
+
+'''
         def run(RL):
             acc_r = [0]
             total_steps = 0
@@ -247,3 +248,4 @@ class DuelingDQN(RLAlgorithm):
         plt.grid()
 
         plt.show()
+'''

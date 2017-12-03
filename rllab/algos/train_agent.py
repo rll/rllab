@@ -19,7 +19,7 @@ def trainAgent(self, Agent):
             if total_steps > self.memory_size:
                 Agent.learn()
 
-            if total_steps % 1000 == 0: 
+            if total_steps % 1000 == 0:
                 print('\tTotal steps: ', total_steps)
 
             if terminated:

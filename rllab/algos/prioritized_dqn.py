@@ -3,7 +3,7 @@ import tensorflow as tf
 import gym
 import matplotlib.pyplot as plt
 from rllab.algos.base import RLAlgorithm
-
+from rllab.algos.train_agent import trainAgent
 
 np.random.seed(1)
 tf.set_random_seed(1)
@@ -75,7 +75,6 @@ class SumTree(object):
     def total_p(self):
         return self.tree[0]  # the root
 
-
 class Memory(object):  # stored as ( s, a, r, s_ ) in SumTree
     """
     This SumTree code is modified version and the original code is from:
@@ -117,7 +116,6 @@ class Memory(object):  # stored as ( s, a, r, s_ ) in SumTree
         ps = np.power(clipped_errors, self.alpha)
         for ti, p in zip(tree_idx, ps):
             self.tree.update(ti, p)
-
 
 class PrioritizedReplayDQNAgent:
     def __init__(
@@ -211,7 +209,7 @@ class PrioritizedReplayDQNAgent:
             c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
             self.q_next = build_layers(self.s_, c_names, n_l1, w_initializer, b_initializer, False)
 
-    def store_transition(self, s, a, r, s_):
+    def observe(self, s, a, r, s_, terminated):
         if self.prioritized:    # prioritized replay
             transition = np.hstack((s, [a, r], s_))
             self.memory.store(transition)    # have high priority for newly arrived transition
@@ -223,7 +221,7 @@ class PrioritizedReplayDQNAgent:
             self.memory[index, :] = transition
             self.memory_counter += 1
 
-    def choose_action(self, observation):
+    def trainPolicy(self, observation):
         observation = observation[np.newaxis, :]
         if np.random.uniform() < self.epsilon:
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
@@ -231,6 +229,9 @@ class PrioritizedReplayDQNAgent:
         else:
             action = np.random.randint(0, self.n_actions)
         return action
+
+    def runPolicy(self, state):
+        pass
 
     def learn(self):
         if self.learn_step_counter % self.replace_target_iter == 0:
@@ -271,7 +272,6 @@ class PrioritizedReplayDQNAgent:
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
 
-
 class PrioritizedReplayDQN(RLAlgorithm):
     def __init__(
             self,
@@ -297,7 +297,7 @@ class PrioritizedReplayDQN(RLAlgorithm):
 
         self.env.seed(21)
         sess = tf.Session()
-        
+
         with tf.variable_scope('DQN_with_prioritized_replay'):
             RL_prio = PrioritizedReplayDQNAgent(
                 n_actions=3,
@@ -315,45 +315,4 @@ class PrioritizedReplayDQN(RLAlgorithm):
         )
         sess.run(tf.global_variables_initializer())
 
-
-        def run(RL):
-            total_steps = 0
-            steps = []
-            episodes = []
-            for i_episode in range(20):
-                observation = self.env.reset()
-                while True:
-                    # self.env.render()
-
-                    action = RL.choose_action(observation)
-
-                    observation_, reward, done, info = self.env.step(action)
-
-                    if done: reward = 10
-
-                    RL.store_transition(observation, action, reward, observation_)
-
-                    if total_steps > self.memory_size_agent:
-                        RL.learn()
-
-                    if done:
-                        print('episode ', i_episode, ' finished')
-                        steps.append(total_steps)
-                        episodes.append(i_episode)
-                        break
-
-                    observation = observation_
-                    total_steps += 1
-            return np.vstack((episodes, steps))
-
-        # his_natural = run(RL_natural)
-        his_prio = run(RL_prio)
-
-        # compare based on first success
-        # plt.plot(his_natural[0, :], his_natural[1, :] - his_natural[1, 0], c='b', label='natural DQN')
-        plt.plot(his_prio[0, :], his_prio[1, :] - his_prio[1, 0], c='r', label='DQN with prioritized replay')
-        plt.legend(loc='best')
-        plt.ylabel('total training time')
-        plt.xlabel('episode')
-        plt.grid()
-        plt.show()
+        prioritized_dqn = trainAgent(self, RL_prio)
