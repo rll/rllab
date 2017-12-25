@@ -38,7 +38,7 @@ dependencies:
         - pyzmq
         - tqdm
         - msgpack-python
-        - mujoco_py
+        - git+https://github.com/inksci/mujoco-py-v0.5.7.git
         - cached_property
         - line_profiler
         - cloudpickle
