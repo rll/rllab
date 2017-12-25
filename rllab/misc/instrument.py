@@ -969,7 +969,7 @@ def launch_ec2(params_list, exp_prefix, docker_image, code_full_path,
         IamInstanceProfile=dict(
             Name=aws_config["iam_instance_profile_name"],
         ),
-        **config.AWS_EXTRA_CONFIGS,
+        **config.AWS_EXTRA_CONFIGS
     )
 
     if len(instance_args["NetworkInterfaces"]) > 0:
