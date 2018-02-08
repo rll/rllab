@@ -90,6 +90,10 @@ class MjViewer(object):
     def render(self):
         if not self.data:
             return
+
+        # Make the window's context current
+        glfw.make_context_current(self.window)
+        
         self.gui_lock.acquire()
         rect = self.get_rect()
         arr = (ctypes.c_double*3)(0, 0, 0)
