@@ -20,7 +20,7 @@ def _glfw_error_callback(e, d):
 
 class MjViewer(object):
 
-    def __init__(self, visible=True, init_width=500, init_height=500, go_fast=False):
+    def __init__(self, visible=True, init_width=500, init_height=500, go_fast=False, title="Simulate"):
         """
         Set go_fast=True to run at full speed instead of waiting for the 60 Hz monitor refresh
         init_width and init_height set window size. On Mac Retina displays, they are in nominal
@@ -43,6 +43,7 @@ class MjViewer(object):
         self.window = None
         self.model = None
         self.gui_lock = Lock()
+        self.title = title
 
         # framebuffer objects
         self._fbo = None
@@ -89,6 +90,10 @@ class MjViewer(object):
     def render(self):
         if not self.data:
             return
+
+        # Make the window's context current
+        glfw.make_context_current(self.window)
+        
         self.gui_lock.acquire()
         rect = self.get_rect()
         arr = (ctypes.c_double*3)(0, 0, 0)
@@ -176,7 +181,7 @@ class MjViewer(object):
         if refresh_rate >= 100:
             glfw.window_hint(glfw.STEREO, 1)
             window = glfw.create_window(
-                self.init_width, self.init_height, "Simulate", None, None)
+                self.init_width, self.init_height, self.title, None, None)
             if window:
                 stereo_available = True
 
@@ -184,7 +189,7 @@ class MjViewer(object):
         if not window:
             glfw.window_hint(glfw.STEREO, 0)
             window = glfw.create_window(
-                self.init_width, self.init_height, "Simulate", None, None)
+                self.init_width, self.init_height, self.title, None, None)
 
         if not window:
             glfw.terminate()
