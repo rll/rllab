@@ -62,3 +62,4 @@ dependencies:
         - pylru==1.0.9
         - hyperopt
         - polling
+        - tensorboard
