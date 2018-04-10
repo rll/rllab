@@ -143,7 +143,7 @@ class ConjugateGradientOptimizer(Serializable):
         if self._subsample_factor < 1:
             n_samples = len(inputs[0])
             inds = np.random.choice(
-                n_samples, n_samples * self._subsample_factor, replace=False)
+                n_samples, int(n_samples * self._subsample_factor), replace=False)
             subsample_inputs = tuple([x[inds] for x in inputs])
         else:
             subsample_inputs = inputs
