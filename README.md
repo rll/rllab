@@ -1,3 +1,9 @@
+rllab is no longer under active development, but an [alliance of researchers](https://github.com/rlworkgroup/) from several universities has adopted it, and now maintains it under the name [**garage**](https://github.com/rlworkgroup/garage).
+
+We recommend you develop new projects, and rebase old ones, onto the actively-maintained [garage](https://github.com/rlworkgroup/garage) codebase, to promote reproducibility and code-sharing in RL research. The new codebase shares almost all of its code with rllab, so most conversions only need to edit package import paths and perhaps update some renamed functions. 
+
+[garage](https://github.com/rlworkgroup/garage) is always looking for new users and contributors, so please consider contributing your rllab-based projects and improvements to the new codebase! Recent improvements include first-class support for TensorFlow, TensorBoard integration, new algorithms including PPO and DDPG, updated Docker images, new environment wrappers, many updated dependencies, and stability improvements.
+
 [![Docs](https://readthedocs.org/projects/rllab/badge)](http://rllab.readthedocs.org/en/latest/)
 [![Circle CI](https://circleci.com/gh/rllab/rllab.svg?style=shield)](https://circleci.com/gh/rllab/rllab)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rllab/rllab/blob/master/LICENSE)
