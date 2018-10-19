@@ -48,6 +48,7 @@ dependencies:
         - git+https://github.com/Theano/Theano.git@adfe319ce6b781083d8dc3200fb4481b00853791#egg=Theano
         - git+https://github.com/neocxi/Lasagne.git@484866cf8b38d878e92d521be445968531646bb8#egg=Lasagne
         - git+https://github.com/plotly/plotly.py.git@2594076e29584ede2d09f2aa40a8a195b3f3fc66#egg=plotly
+        - git+https://github.com/deepmind/dm_control.git#egg=dm_control
         - awscli
         - git+https://github.com/openai/gym.git@v0.7.4#egg=gym
         - pyglet
