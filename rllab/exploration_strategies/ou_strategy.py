@@ -16,13 +16,14 @@ class OUStrategy(ExplorationStrategy, Serializable):
     where Wt denotes the Wiener process
     """
 
-    def __init__(self, env_spec, mu=0, theta=0.15, sigma=0.3, **kwargs):
+    def __init__(self, env_spec, mu=0, theta=0.15, sigma=0.3, dt=1e-2, **kwargs):
         assert isinstance(env_spec.action_space, Box)
         assert len(env_spec.action_space.shape) == 1
         Serializable.quick_init(self, locals())
         self.mu = mu
         self.theta = theta
         self.sigma = sigma
+        self.dt = dt
         self.action_space = env_spec.action_space
         self.state = np.ones(self.action_space.flat_dim) * self.mu
         self.reset()
@@ -39,10 +40,10 @@ class OUStrategy(ExplorationStrategy, Serializable):
     @overrides
     def reset(self):
         self.state = np.ones(self.action_space.flat_dim) * self.mu
-
+    
     def evolve_state(self):
         x = self.state
-        dx = self.theta * (self.mu - x) + self.sigma * nr.randn(len(x))
+        dx = self.theta * (self.mu - x) * self.dt + self.sigma * np.sqrt(self.dt) * nr.randn(len(x))
         self.state = x + dx
         return self.state
 
