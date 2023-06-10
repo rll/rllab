@@ -1,6 +1,11 @@
+#From https://github.com/rll/rllab/issues/240 AlexZho1995's solution:
+#"I found that joblib==0.11 use Memmaping, while joblib=0.13 fixed this typo and use Memmapping.
+#I guess that one of your machines use 0.13 version and others use 0.11 version.
+#So you can try to use same version of joblib to solve the problem"
 
+##Solved the issue and adding this only to make it easier in the future and not to take credit away from ALexZHou1995.
 
-from joblib.pool import MemmapingPool
+from joblib.pool import MemmappingPool
 import multiprocessing as mp
 from rllab.misc import logger
 import pyprind
