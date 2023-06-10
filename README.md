@@ -31,6 +31,16 @@ rllab comes with support for running reinforcement learning experiments on an EC
 
 The main modules use [Theano](http://deeplearning.net/software/theano/) as the underlying framework, and we have support for TensorFlow under [sandbox/rocky/tf](https://github.com/openai/rllab/tree/master/sandbox/rocky/tf).
 
+# Installation
+1- Download the zip file or 'git clone https://github.com/rll/rllab'.
+
+2- cd into the rllab-master folder
+
+3- '''pip install -r requirements.py'''
+
+4- run 'python install setup.py'
+
+
 # Documentation
 
 Documentation is available online: [https://rllab.readthedocs.org/en/latest/](https://rllab.readthedocs.org/en/latest/).
