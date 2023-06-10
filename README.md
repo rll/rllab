@@ -36,9 +36,7 @@ The main modules use [Theano](http://deeplearning.net/software/theano/) as the u
 
 2- cd into the rllab-master folder
 
-3- '''pip install -r requirements.py'''
-
-4- run 'python install setup.py'
+3- run 'python install setup.py'
 
 
 # Documentation
